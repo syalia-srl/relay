@@ -2,6 +2,7 @@
 import json
 import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 from inbox_relay.main import app
 
 client = TestClient(app)
@@ -19,12 +20,11 @@ def test_create_channel():
 def test_ws_rejects_bad_token():
     r = client.post("/channels")
     ch = r.json()
-    with client.websocket_connect(
-        f"/ws/{ch['channel_id']}?token=bad"
-    ) as ws:
-        # Should be closed immediately
-        with pytest.raises(Exception):
-            ws.receive_bytes()
+    # Refused before the handshake: the client never holds an open socket.
+    with pytest.raises(WebSocketDisconnect) as refused:
+        with client.websocket_connect(f"/ws/{ch['channel_id']}?token=bad"):
+            pass
+    assert refused.value.code == 4403
 
 
 def test_ws_relay_message():
