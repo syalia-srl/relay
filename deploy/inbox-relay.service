@@ -1,0 +1,21 @@
+# /etc/systemd/system/inbox-relay.service — how relay.syalia.dev runs.
+# Host caddy: relay.syalia.dev { reverse_proxy 127.0.0.1:8010 }
+[Unit]
+Description=inbox-relay — E2E relay for AInBox Mobile
+After=network.target
+
+[Service]
+Type=simple
+User=apiad
+WorkingDirectory=/srv/inbox-relay
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+# Outside the checkout, owned by the service user, 0700. Without it the relay
+# cannot write /data, logs "channel store not writable" and keeps channels in
+# memory only: every paired phone dies on the next restart.
+Environment=RELAY_STATE_PATH=/srv/inbox-relay-data/channels.json
+ExecStart=/usr/local/bin/uv run uvicorn inbox_relay.main:app --host 127.0.0.1 --port 8010 --no-access-log
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
