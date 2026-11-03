@@ -9,6 +9,8 @@ requires-python = ">=3.12"
 conformance = ["pytest", "pytest-asyncio", "httpx", "websockets", "cryptography>=44"]
 # The reference used to generate and check vectors/ (PROTOCOL.md section 12).
 vectors = ["cryptography>=44", "noiseprotocol==0.3.1"]
+# The documentation site is built from Markdown with one library.
+docs = ["markdown>=3.7"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>@@TITLE@@ — Relay — SYALIA</title>
+<meta name="description" content="@@DESCRIPTION@@">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink-100:#e9ecf5; --ink-200:#cfd5e6; --ink-300:#a3aece; --ink-400:#6e7ba0; --ink-500:#475070;
+  --ink-600:#2e3450; --ink-700:#1c2138; --ink-800:#11152a; --ink-900:#0a0d1f; --ink-950:#05071a;
+  --syalia-300:#86b3da; --syalia-400:#5b8fc4; --syalia-700:#3d6584;
+  --accent-300:#fcd34d; --accent-400:#fbbf24;
+  --relay:#22d3ee; --relay-soft:rgba(34,211,238,.12); --relay-line:rgba(34,211,238,.32);
+  --line:rgba(255,255,255,.06);
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; font-family:'Inter',system-ui,sans-serif; background:var(--ink-950); color:var(--ink-100);
+  -webkit-font-smoothing:antialiased; line-height:1.65; }
+a { color:var(--relay); text-decoration:none; }
+a:hover { text-decoration:underline; }
+code, pre { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:.88em; }
+code { background:var(--ink-800); border:1px solid var(--line); border-radius:6px; padding:.1em .4em; color:var(--ink-200); }
+p code, li code, td code { overflow-wrap:anywhere; }
+pre { background:var(--ink-900); border:1px solid var(--line); border-radius:14px; padding:18px 20px; overflow-x:auto;
+  color:var(--ink-200); line-height:1.55; margin:0; }
+pre code { background:none; border:0; padding:0; }
+.display { font-family:'Space Grotesk',system-ui,sans-serif; letter-spacing:-.02em; }
+.wrap { max-width:1120px; margin:0 auto; padding:0 24px; }
+
+nav { position:sticky; top:0; z-index:10; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  background:rgba(5,7,26,.85); border-bottom:1px solid var(--line); }
+nav .wrap { height:64px; display:flex; align-items:center; justify-content:space-between; gap:16px; min-width:0; }
+.brand { display:flex; align-items:center; gap:12px; color:var(--ink-100); flex:none; }
+.brand:hover { text-decoration:none; }
+.logo { width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,var(--syalia-400),var(--syalia-700)); box-shadow:0 6px 18px rgba(62,114,173,.3);
+  font-weight:700; color:#fff; }
+.brand b { font-weight:600; font-size:1.05rem; }
+.brand span.sub { color:var(--ink-400); font-weight:500; }
+.links { display:flex; align-items:center; gap:20px; font-size:.88rem; overflow-x:auto; min-width:0;
+  scrollbar-width:none; }
+.links::-webkit-scrollbar { display:none; }
+.links a { color:var(--ink-300); white-space:nowrap; }
+.links a:hover { color:#fff; text-decoration:none; }
+.links a[aria-current="page"] { color:var(--relay); }
+
+.page { display:grid; grid-template-columns:250px minmax(0,1fr); gap:52px;
+  max-width:1120px; margin:0 auto; padding:44px 24px 96px; }
+main { min-width:0; }
+.head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:26px; }
+.eyebrow { font-size:.72rem; text-transform:uppercase; letter-spacing:.22em; color:var(--relay); }
+.md-link { font-size:.78rem; color:var(--ink-400); border:1px solid rgba(255,255,255,.12); border-radius:999px;
+  padding:5px 12px; white-space:nowrap; }
+.md-link:hover { color:var(--ink-100); border-color:rgba(255,255,255,.3); text-decoration:none; }
+
+aside.toc { position:sticky; top:88px; align-self:start; font-size:.86rem; border-left:1px solid var(--line);
+  padding-left:18px; max-height:calc(100vh - 120px); overflow-y:auto; }
+aside.toc summary { display:none; }
+aside.toc .toc ul { list-style:none; margin:0; padding:0; }
+aside.toc .toc ul ul { padding-left:14px; }
+aside.toc .toc li { margin:0 0 8px; }
+aside.toc .toc a { color:var(--ink-400); }
+aside.toc .toc a:hover { color:var(--relay); text-decoration:none; }
+
+h1 { font-family:'Space Grotesk',system-ui,sans-serif; font-size:clamp(2.2rem,5vw,3.4rem); line-height:1.05;
+  margin:0 0 24px; font-weight:700; letter-spacing:-.02em; }
+h2 { font-family:'Space Grotesk',system-ui,sans-serif; font-size:clamp(1.5rem,3vw,2rem); line-height:1.15;
+  margin:52px 0 16px; font-weight:700; scroll-margin-top:88px; }
+h3 { font-family:'Space Grotesk',system-ui,sans-serif; font-size:1.2rem; margin:34px 0 12px; font-weight:600;
+  scroll-margin-top:88px; }
+h4 { font-size:1rem; margin:26px 0 10px; }
+p { margin:0 0 16px; color:var(--ink-300); }
+li { color:var(--ink-300); margin:0 0 8px; }
+strong { color:var(--ink-100); font-weight:600; }
+hr { border:0; border-top:1px solid var(--line); margin:36px 0; }
+blockquote { border-left:2px solid var(--relay-line); margin:20px 0; padding:2px 0 2px 18px; }
+blockquote p { color:var(--ink-300); }
+.headerlink { color:var(--ink-600); margin-left:8px; font-size:.7em; text-decoration:none; }
+h2:hover .headerlink, h3:hover .headerlink { color:var(--relay); }
+
+.code-wrap { position:relative; margin:18px 0; }
+.code-wrap pre { padding-top:18px; }
+.code-wrap button.copy { position:absolute; top:9px; right:10px; font:inherit; font-size:.72rem;
+  color:var(--ink-400); background:var(--ink-800); border:1px solid rgba(255,255,255,.1); border-radius:7px;
+  padding:3px 9px; cursor:pointer; opacity:.45; transition:opacity .12s; }
+.code-wrap:hover button.copy, .code-wrap button.copy:focus { opacity:1; }
+.code-wrap button.copy:hover { color:var(--ink-100); }
+@media (hover:none) { .code-wrap button.copy { opacity:1; } }
+
+.table-scroll { overflow-x:auto; margin:20px 0; border:1px solid var(--line); border-radius:14px; }
+table { width:100%; border-collapse:collapse; font-size:.92rem; }
+th, td { text-align:left; vertical-align:top; padding:12px 15px; border-bottom:1px solid var(--line); }
+tr:last-child td { border-bottom:0; }
+th { color:var(--ink-400); font-weight:500; font-size:.72rem; text-transform:uppercase; letter-spacing:.12em;
+  white-space:nowrap; }
+td { color:var(--ink-300); }
+td:first-child { color:var(--ink-100); }
+td code { white-space:nowrap; }
+
+footer { border-top:1px solid var(--line); padding:34px 0; color:var(--ink-400); font-size:.86rem; }
+footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; align-items:center; }
+footer a { color:var(--ink-400); }
+footer a:hover { color:#fff; }
+footer .links { flex-wrap:wrap; overflow:visible; }
+
+@media (max-width:900px) {
+  .page { grid-template-columns:1fr; gap:8px; padding-top:28px; }
+  aside.toc { position:static; border-left:0; padding-left:0; max-height:none; margin-bottom:26px;
+    border-bottom:1px solid var(--line); padding-bottom:16px; }
+  aside.toc summary { display:block; cursor:pointer; color:var(--ink-300); font-size:.82rem;
+    text-transform:uppercase; letter-spacing:.16em; }
+  aside.toc details:not([open]) .toc { display:none; }
+  aside.toc .toc { margin-top:14px; }
+  nav .wrap { gap:10px; }
+  .brand span.sub { display:none; }
+  .links { gap:14px; font-size:.82rem; }
+  h2 { margin-top:40px; }
+}
+@media (max-width:520px) {
+  .wrap { padding:0 18px; }
+  .page { padding:22px 18px 72px; }
+  th, td { padding:10px 12px; }
+  .head { align-items:flex-start; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="index.html"><div class="logo display">S</div><b class="display">SYALIA <span class="sub">/ relay</span></b></a>
+    <div class="links">@@NAV@@</div>
+  </div>
+</nav>
+
+<div class="page">
+  <aside class="toc">
+    <details open>
+      <summary>On this page</summary>
+      @@TOC@@
+    </details>
+  </aside>
+  <main>
+    <div class="head">
+      <div class="eyebrow">Relay documentation</div>
+      <a class="md-link" href="@@SLUG@@.md">Markdown version</a>
+    </div>
+    @@CONTENT@@
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="https://syalia.com"><div class="logo display" style="width:28px;height:28px;font-size:.85rem">S</div><b class="display" style="color:var(--ink-200)">SYALIA</b><span style="color:var(--ink-500)">© 2026</span></a>
+    <div class="links">
+      <a href="index.html">Overview</a>
+      <a href="run-a-relay.html">Run a relay</a>
+      <a href="protocol.html">Protocol</a>
+      <a href="security.html">Security</a>
+      <a href="python.html">Python</a>
+      <a href="javascript.html">JavaScript</a>
+      <a href="go.html">Go</a>
+      <a href="llms.txt">llms.txt</a>
+      <a href="https://github.com/syalia-srl/relay">GitHub</a>
+      <a href="https://github.com/syalia-srl/relay/blob/main/LICENSE">Apache-2.0</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  for (const wrapper of document.querySelectorAll(".code-wrap")) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "copy";
+    button.textContent = "Copy";
+    button.addEventListener("click", async () => {
+      const code = wrapper.querySelector("pre code") || wrapper.querySelector("pre");
+      try {
+        await navigator.clipboard.writeText(code.innerText);
+        button.textContent = "Copied";
+      } catch {
+        const area = document.createElement("textarea");
+        area.value = code.innerText;
+        document.body.append(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+        button.textContent = "Copied";
+      }
+      setTimeout(() => { button.textContent = "Copy"; }, 1500);
+    });
+    wrapper.append(button);
+  }
+  const toc = document.querySelector("aside.toc details");
+  if (toc && window.matchMedia("(max-width: 900px)").matches) toc.removeAttribute("open");
+})();
+</script>
+</body>
+</html>
