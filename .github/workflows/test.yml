@@ -22,6 +22,24 @@ jobs:
       - run: uv run --python 3.12 --group conformance pytest conformance -q
         env:
           RELAY_BIN: ${{ github.workspace }}/server/relay
+  py:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - run: CGO_ENABLED=0 go build -o relay ./cmd/relay
+        working-directory: server
+      - uses: astral-sh/setup-uv@v5
+      - name: give the tests a private address for ws:// (PROTOCOL.md 8.1)
+        run: sudo ip addr add 10.255.0.1/32 dev lo
+      - run: uv run --python 3.12 --group test pytest -q
+        working-directory: py
+        env:
+          RELAY_BIN: ${{ github.workspace }}/server/relay
+          RELAY_TEST_ADDR: 10.255.0.1
   vectors:
     runs-on: ubuntu-latest
     steps:
