@@ -15,7 +15,7 @@ const MAX_FRAME = 65537;
 const MAX_BODY = 64 * 1024;
 // Messages wait for the application; a full queue closes the socket instead of
 // growing without limit.
-const MAX_QUEUE = 64;
+const MAX_QUEUE = 256;
 
 /** PROTOCOL.md §8.1: the relay URLs a guest and a host may exchange. */
 export function urlAllowed(url) {

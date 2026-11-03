@@ -66,6 +66,9 @@ await guest.close();                              // stops connections, keeps pa
   per pairing with `crypto.subtle` and keeps it in the store. A native `key` serves one
   pairing, as in Python.
 - `guest.hosts` lists paired hosts after a restart.
+- A browser WebSocket cannot be paused, so a guest whose application stops reading
+  `for await (const message of host)` gets its socket closed when 256 frames wait
+  unread, and reconnects, losing the frames in flight. Read the iterator continuously.
 
 ## Stores
 
