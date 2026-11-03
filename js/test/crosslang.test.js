@@ -13,11 +13,11 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { Guest, Host, Relay, fileStore } from "../src/index.js";
-import { GuestInbox, HostInbox, unpairAll, waitUntil } from "./support/inbox.js";
-import { OPERATOR_KEY, startRelay } from "./support/relay.js";
+import { GuestInbox, HostInbox, unpairAll, waitUntil } from "../test-support/inbox.js";
+import { OPERATOR_KEY, startRelay } from "../test-support/relay.js";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
-const SCRIPT = fileURLToPath(new URL("support/python_partner.py", import.meta.url));
+const SCRIPT = fileURLToPath(new URL("../test-support/python_partner.py", import.meta.url));
 const UV = spawnSync("uv", ["--version"], { encoding: "utf8" }).status === 0;
 
 /** One Python side, spoken to in JSON lines over stdin and stdout. */

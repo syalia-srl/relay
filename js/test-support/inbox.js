@@ -1,6 +1,6 @@
 /** Small helpers the end-to-end and hostile-relay tests share. */
 
-import { RelayError } from "../../src/errors.js";
+import { RelayError } from "../src/errors.js";
 
 /** Collects what `for await (const [device, message] of host)` yields. */
 export class HostInbox {

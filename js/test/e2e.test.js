@@ -7,8 +7,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import { Guest, Host, PairingFailed, Relay, Revoked, WrongCode, fileStore } from "../src/index.js";
-import { GuestInbox, HostInbox, sendUntil, unpairAll, waitUntil } from "./support/inbox.js";
-import { OPERATOR_KEY, startRelay } from "./support/relay.js";
+import { GuestInbox, HostInbox, sendUntil, unpairAll, waitUntil } from "../test-support/inbox.js";
+import { OPERATOR_KEY, startRelay } from "../test-support/relay.js";
 
 function workspace() {
   return mkdtempSync(join(tmpdir(), "relay-js-"));

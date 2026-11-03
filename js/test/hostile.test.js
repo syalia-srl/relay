@@ -7,9 +7,9 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import { Guest, Host, Relay, RelayError, fileStore } from "../src/index.js";
-import { HostileProxy } from "./support/hostile.js";
-import { GuestInbox, HostInbox, sendUntil, unpairAll, waitUntil } from "./support/inbox.js";
-import { OPERATOR_KEY, startRelay } from "./support/relay.js";
+import { HostileProxy } from "../test-support/hostile.js";
+import { GuestInbox, HostInbox, sendUntil, unpairAll, waitUntil } from "../test-support/inbox.js";
+import { OPERATOR_KEY, startRelay } from "../test-support/relay.js";
 
 const FAULTS = ["drop", "duplicate", "reorder", "delay", "relabel", "flip"];
 

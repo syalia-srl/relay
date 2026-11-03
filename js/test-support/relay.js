@@ -8,7 +8,7 @@ import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { urlAllowed } from "../../src/relays.js";
+import { urlAllowed } from "../src/relays.js";
 
 export const OPERATOR_KEY = "operator-key-0123456789";
 
