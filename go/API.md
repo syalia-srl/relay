@@ -92,6 +92,13 @@ A `relay.Store` is `Load() ([]byte, error)` (nil, nil on the first run) and
 `relay.ErrClosed` and `*relay.WrongCodeError`, all matched with `errors.Is` and
 `errors.As`. Transient network errors are retried inside and never returned.
 
+## Panics
+
+The connection loops recover a panic so one bug costs one attempt, not the whole
+host or guest. `relay.PanicLogf` receives the panic and its stack and defaults to
+`log.Printf`; replace it before opening a host or guest to route panics to the
+application's logger, or set it to nil to keep them silent.
+
 ## Not in the API
 
 No callbacks, no exported channels, no functional options, nothing beyond the above.

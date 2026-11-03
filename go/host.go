@@ -677,8 +677,9 @@ func (h *Host) confirm(ctx context.Context, pairing *Pairing, code string) (*Dev
 	for _, item := range oldChannels {
 		item.mu.Lock()
 		item.candidate = nil
+		sameGuest := bytes.Equal(item.guest, guest)
 		item.mu.Unlock()
-		if !bytes.Equal(item.guest, guest) {
+		if !sameGuest {
 			h.abortChannel(item)
 		}
 	}
@@ -969,7 +970,9 @@ func (h *Host) runSocket(item *channel, retry *backoff) (result outcome) {
 	var socket *socket
 	defer func() {
 		// A panic, like any other failure, costs this attempt and not the channel.
-		_ = recover()
+		if value := recover(); value != nil {
+			logPanic(value)
+		}
 		if socket != nil {
 			socket.Close()
 		}
