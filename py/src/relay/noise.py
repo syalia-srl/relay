@@ -14,7 +14,7 @@ import struct
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from .errors import RelayError
+from .errors import ProtocolViolation
 from .keys import StaticKey, x25519_dh
 
 HASHLEN = 32
@@ -24,10 +24,6 @@ REKEY_EVERY = 2**20
 
 _IKPSK1 = ([], ["s"], [["e", "es", "s", "ss", "psk"], ["e", "ee", "se"]])
 _KK = (["s"], ["s"], [["e", "es", "ss"], ["e", "ee", "se"]])
-
-
-class ProtocolViolation(RelayError):
-    """A frame or message breaks PROTOCOL.md."""
 
 
 def _sha256(data: bytes) -> bytes:
@@ -131,9 +127,9 @@ class HandshakeState:
         self._cipher = CipherState()
         self._psk_mode = pattern == "IKpsk1"
         self._mix_hash(prologue)
-        for token in pre_initiator:
+        for _ in pre_initiator:
             self._mix_hash(static.public if initiator else remote_static)
-        for token in pre_responder:
+        for _ in pre_responder:
             self._mix_hash(remote_static if initiator else static.public)
 
     @property

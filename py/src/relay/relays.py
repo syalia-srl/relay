@@ -196,10 +196,9 @@ class Socket:
 
     async def recv(self) -> bytes:
         """The next L1 frame. Presence events are skipped."""
-        assert self._websocket is not None
         try:
             while True:
-                message = await self._websocket.recv()
+                message = await self._open_websocket().recv()
                 if not isinstance(message, bytes):
                     raise ProtocolViolation("the relay sent a text frame")
                 if message[:1] == b"\x00":
@@ -211,13 +210,18 @@ class Socket:
             raise _closed(closed) from closed
 
     async def send_all(self, frames: list[bytes]) -> None:
-        assert self._websocket is not None
         try:
             async with self._send_lock:
                 for frame in frames:
-                    await self._websocket.send(b"\x01" + frame)
+                    await self._open_websocket().send(b"\x01" + frame)
         except ConnectionClosed as closed:
             raise _closed(closed) from closed
+
+    def _open_websocket(self):
+        # Another task may close the socket while this one sends or reads.
+        if self._websocket is None:
+            raise SocketClosed(1006)
+        return self._websocket
 
     async def close(self) -> None:
         websocket, self._websocket = self._websocket, None
