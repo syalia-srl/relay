@@ -1,6 +1,9 @@
 name: pages
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [docs/**, PROTOCOL.md, SECURITY.md, .github/workflows/pages.yml]
 
 permissions:
   contents: read
