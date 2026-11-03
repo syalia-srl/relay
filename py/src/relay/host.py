@@ -154,7 +154,6 @@ class Host:
         self._pairings: dict[str, Pairing] = {}
         self._faulty: set[str] = set()
         self._paused: dict[str, float] = {}
-        self._tasks: set[asyncio.Task] = set()
         self._readers: set[asyncio.Queue] = set()
         self._closed = False
 
@@ -212,7 +211,7 @@ class Host:
                 for channel in pairing.channels
             ),
         ).encode()
-        pairing.expiry = self._track(self._expire(pairing))
+        pairing.expiry = asyncio.create_task(self._expire(pairing))
         return pairing
 
     async def revoke(self, device: Device) -> None:
@@ -313,7 +312,7 @@ class Host:
         self._save()
         for channel in channels:
             self._start(channel)
-        pairing.deadline = self._track(self._deadline(pairing))
+        pairing.deadline = asyncio.create_task(self._deadline(pairing))
 
         for channel in pairing.channels:
             if channel.guest == guest and channel.session is not None and channel.socket is not None:
@@ -409,13 +408,7 @@ class Host:
         return channels
 
     def _start(self, channel: _Channel) -> None:
-        channel.task = self._track(self._run_channel(channel))
-
-    def _track(self, coroutine) -> asyncio.Task:
-        task = asyncio.create_task(coroutine)
-        self._tasks.add(task)
-        task.add_done_callback(self._tasks.discard)
-        return task
+        channel.task = asyncio.create_task(self._run_channel(channel))
 
     def _all_channels(self) -> list[_Channel]:
         channels = [channel for pairing in self._pairings.values() for channel in pairing.channels]
