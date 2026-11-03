@@ -71,18 +71,6 @@ async def send_until(
             await asyncio.sleep(0.05)
 
 
-async def stop_guest(guest) -> None:
-    """Stop a guest's background links without unpairing it.
-
-    API.md gives a guest no close other than ``unpair``, which forgets the
-    pairing; the restart test needs the state to survive, so it stops the
-    links directly.
-    """
+async def unpair_all(guest) -> None:
     for link in guest.hosts:
-        for task in (link._task, link._deadline):
-            if task is not None:
-                task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await task
-        if link._socket is not None:
-            await link._socket.close()
+        await link.unpair()

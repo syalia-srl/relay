@@ -13,12 +13,12 @@ from relay import Host, Relay
 
 host = await Host.open(
     "state/host",                                  # hs, bound devices, channels; 0600
-    relays=[Relay("https://relay.syalia.dev", key=project_key)],
+    relays=[Relay("wss://relay.syalia.dev", key=project_key)],
 )
 
 pairing = await host.pair("pixel-7")               # draws dev, psk, channels
 show_qr(pairing.payload)                           # str, the JSON of section 4
-device = await pairing.confirm(input("code: "))    # raises PairingFailed
+device = await pairing.confirm(input("code: "))    # raises WrongCode, PairingFailed
 
 async for device, message in host:                 # messages from every bound device
     await device.send(b"pong")
@@ -32,6 +32,8 @@ await host.close()
   raises `WrongCode` with the tries left; the third, a collision, `exp` or the
   10-minute limit raise `PairingFailed`. The host never exposes pending codes.
 - `host.devices` lists bound devices; a `Device` has `id`, `name` and `connected`.
+- `device.send` waits until the device is connected; wrap it in `asyncio.timeout`
+  when the caller cannot wait.
 - `pairing.device` is the drawn `dev`. A web application starts a pairing in one
   request and confirms it in another, so `host.pairing(dev)` returns the open
   pairing for that id, or raises `PairingFailed` if it has ended.
@@ -57,10 +59,16 @@ async for message in host:
     ...
 
 await host.unpair()                                # close / closed
+await guest.close()                                # stops connections, keeps pairings
 ```
 
 - `guest.hosts` lists paired hosts after a restart; each is the same object `pair`
   returned. A revoked host raises `Revoked` from its iterator.
+- `Guest` is an async context manager too, like `Host`.
+- Section 3 gives each pairing its own `gs`. Without `key`, the guest draws one per
+  pairing and keeps it in the state file. A native `key` serves one pairing, so a
+  second host needs a second `Guest` with its own state path and key.
+- A pairing a restart interrupts is not kept: the person scans a new payload.
 
 ## Errors
 

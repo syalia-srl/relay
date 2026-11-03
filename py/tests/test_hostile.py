@@ -10,7 +10,7 @@ import pytest
 from hostile import HostileProxy
 from relay import Guest, Host, Relay, RelayError
 from relayfixture import OPERATOR_KEY
-from support import GuestInbox, HostInbox, send_until, wait_until
+from support import GuestInbox, HostInbox, send_until, unpair_all, wait_until
 
 FAULTS = ["drop", "duplicate", "reorder", "delay", "relabel", "flip"]
 
@@ -56,7 +56,7 @@ async def test_hostile_relay(relay, tmp_path: Path, action: str) -> None:
     finally:
         if guest is not None:
             with suppress(Exception):
-                await asyncio.wait_for(guest.unpair(), 20)
+                await asyncio.wait_for(unpair_all(guest), 20)
         if host is not None:
             await host.close()
         await proxy.stop()

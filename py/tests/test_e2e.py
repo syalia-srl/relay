@@ -11,7 +11,7 @@ import pytest
 from relay import Guest, Host, PairingFailed, Relay, Revoked, WrongCode
 from relayfixture import OPERATOR_KEY
 from relayfixture import Relay as RelayProcess
-from support import GuestInbox, HostInbox, send_until, stop_guest, wait_until
+from support import GuestInbox, HostInbox, send_until, unpair_all, wait_until
 
 
 async def pair(relay, tmp_path: Path) -> tuple[Host, Guest, object, object]:
@@ -21,7 +21,8 @@ async def pair(relay, tmp_path: Path) -> tuple[Host, Guest, object, object]:
     guest = await Guest.open(str(tmp_path / "guest"))
     link = await asyncio.wait_for(guest.pair(pairing.payload), 10)
     assert link.code.isdigit() and len(link.code) == 6
-    device = await asyncio.wait_for(pairing.confirm(link.code), 10)
+    # A web application confirms in a later request, finding the pairing by id.
+    device = await asyncio.wait_for(host.pairing(pairing.device).confirm(link.code), 10)
     await asyncio.wait_for(link.bound(), 10)
     return host, guest, device, link
 
@@ -47,7 +48,7 @@ async def test_pair_and_send_both_ways(relay, tmp_path: Path) -> None:
     finally:
         await received.stop()
         await replies.stop()
-        await guest.unpair()
+        await unpair_all(guest)
         await host.close()
 
 
@@ -61,7 +62,7 @@ async def test_restart_both_sides(relay, tmp_path: Path) -> None:
     await replies.stop()
 
     await host.close()
-    await stop_guest(guest)
+    await guest.close()
 
     host = await Host.open(str(tmp_path / "host"), relays=[Relay(relay.url, key=OPERATOR_KEY)])
     guest = await Guest.open(str(tmp_path / "guest"))
@@ -81,7 +82,7 @@ async def test_restart_both_sides(relay, tmp_path: Path) -> None:
             await received.stop()
             await replies.stop()
     finally:
-        await guest.unpair()
+        await unpair_all(guest)
         await host.close()
 
 
@@ -100,7 +101,7 @@ async def test_revoke(relay, tmp_path: Path) -> None:
 
 async def test_unpair_forgets_both_sides(relay, tmp_path: Path) -> None:
     host, guest, _, _ = await pair(relay, tmp_path)
-    await guest.unpair()
+    await unpair_all(guest)
     await wait_until(lambda: host.devices == [])
     await host.close()
 
@@ -121,14 +122,16 @@ async def test_wrong_codes(relay, tmp_path: Path) -> None:
         link = await asyncio.wait_for(guest.pair(pairing.payload), 10)
         wrong = "000000" if link.code != "000000" else "111111"
         with pytest.raises(WrongCode) as error:
-            await pairing.confirm(wrong)
+            await pairing.confirm("١٢٣٤٥٦")
         assert error.value.tries_left == 2
         with pytest.raises(WrongCode):
             await pairing.confirm(wrong)
         with pytest.raises(PairingFailed):
             await pairing.confirm(wrong)
+        with pytest.raises(PairingFailed):
+            host.pairing(pairing.device)
     finally:
-        await stop_guest(guest)
+        await guest.close()
         await host.close()
 
 
@@ -157,7 +160,7 @@ async def test_moves_to_the_second_relay(tmp_path: Path, relay_binary: str) -> N
         finally:
             await received.stop()
             await replies.stop()
-            await guest.unpair()
+            await unpair_all(guest)
             await host.close()
     finally:
         first.stop()

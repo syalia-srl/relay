@@ -27,12 +27,12 @@ from relay import Host, Relay
 
 host = await Host.open(
     "state/host",                                  # hs, bound devices, channels; 0600
-    relays=[Relay("https://relay.syalia.dev", key=project_key)],
+    relays=[Relay("wss://relay.syalia.dev", key=project_key)],
 )
 
 pairing = await host.pair("pixel-7")               # draws dev, psk, channels
 show_qr(pairing.payload)                           # str, the JSON of section 4
-device = await pairing.confirm(input("code: "))    # raises PairingFailed
+device = await pairing.confirm(input("code: "))    # raises WrongCode, PairingFailed
 
 async for device, message in host:                 # messages from every bound device
     await device.send(b"pong")
@@ -57,7 +57,8 @@ await host.send(b"ping")
 async for message in host:
     ...
 
-await guest.unpair()                               # close / closed
+await host.unpair()                                # close / closed
+await guest.close()                                # stops connections, keeps pairings
 ```
 
 `Host` is an async context manager too: `async with await Host.open(...) as host:`.
