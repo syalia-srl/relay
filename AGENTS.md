@@ -1,50 +1,82 @@
-# AGENTS.md — inbox-relay
+# AGENTS.md — relay
 
 Dumb E2E-encrypted message relay for AInBox Mobile.
 
 ## What it is
 
-FastAPI service behind `relay.syalia.dev` (port 8010 on its host). Creates channels (two-slot
-WebSocket pipes), forwards encrypted binary frames between slots, emits
-presence system events on connect/disconnect.
+The service behind the relay URL (port 8010 on its host). Creates channels (two-slot
+WebSocket pipes), forwards encrypted binary frames between slots, emits presence
+system events on connect/disconnect.
 
 ## Stack
 
-Python 3.12 + FastAPI + uvicorn. No database: the channel store is one JSON file
+Go 1.27, one static binary (`CGO_ENABLED=0`), the standard library plus
+`github.com/coder/websocket`. No database: the channel store is one JSON file
 (`RELAY_STATE_PATH`, default `/data/channels.json`) holding channel ids and the
-SHA-256 of each slot token, never a token. `RELAY_STATE_PATH` must point at a
-directory the service can write, or the relay logs "channel store not writable",
-keeps channels in memory only, and every paired phone dies on the next restart.
+SHA-256 of each slot token, never a token. A path the service cannot write makes it
+log "channel store not writable", keep channels in memory only, and lose every
+pairing on the next restart.
 
 ## Rules
 
-- A wrong slot token is refused before the WebSocket handshake (HTTP 403).
-- A newer socket on a slot replaces the older one (closed 4409); only the socket
-  that holds the slot frees it.
-- Channel creation is anonymous, so it is rate limited (`RELAY_CREATE_BURST`,
-  `RELAY_CREATE_PER_MINUTE`) and capped (`RELAY_MAX_CHANNELS`). Unscanned channels
-  leave after an hour, abandoned ones after 30 days with no socket.
-- No log line carries a slot token (uvicorn's request lines are redacted).
+- v1 is `PROTOCOL.md` section 2. v0 is kept unchanged for one migration release;
+  `RELAY_V0=off` turns it off.
+- A wrong v0 slot token is refused before the WebSocket handshake (HTTP 403). A v1
+  socket that cannot authenticate is closed with 4401, whatever the reason.
+- A newer socket on a slot replaces the older one (4409); only the socket that
+  holds the slot frees it.
+- Anonymous v0 creation is rate limited (`RELAY_CREATE_BURST`,
+  `RELAY_CREATE_PER_MINUTE`) and the store is capped (`RELAY_MAX_CHANNELS`).
+  Unscanned channels leave after an hour, abandoned ones after 30 days with no
+  socket.
+- No log line carries a token, a channel id beyond its first 8 characters, or a
+  request line.
 
 ## Run
 
-    uv run uvicorn inbox_relay.main:app --host 0.0.0.0 --port 8010 --no-access-log
+    cd server && CGO_ENABLED=0 go build -o relay ./cmd/relay
+    RELAY_ADDR=127.0.0.1:8010 RELAY_STATE_PATH=/tmp/channels.json ./relay
+
+`RELAY_ADDR` defaults to `127.0.0.1:8010`. `SIGHUP` re-reads the keys file; `SIGTERM`
+closes the sockets with 1001 and saves the store.
+
+## Config
+
+`RELAY_KEYS_PATH` names the keys file, read at start and on `SIGHUP`:
+
+    {"relay_id": "relay.example",
+     "issuers": {"<iss>": "<hex Ed25519 public key>"},
+     "keys": [{"id": "<label>", "sha256": "<hex sha256 of the operator key>",
+               "channels": 64, "creates_per_minute": 10, "bytes_per_day": 200000000}]}
+
+A key with all three limits at 0 has no limits, for an install's own relay. A
+missing file refuses every v1 key, which is the safe default.
+
+## Test
+
+    cd server && go vet ./... && go test ./...
+    uv run --group conformance pytest conformance
+
+The conformance suite is black-box: it starts the binary named by `RELAY_BIN` on a
+free port with a temporary state directory and keys file. It covers the v0 behaviour
+and every v1 rule, and a Go unit test replays every case of
+`vectors/relay_token.json`.
 
 ## Deploy
 
-`relay.syalia.dev` is a systemd unit, not a container: `deploy/inbox-relay.service`
-is the unit as installed at `/etc/systemd/system/inbox-relay.service`. It runs a
-git checkout at `/srv/inbox-relay` behind the host's caddy on 127.0.0.1:8010,
-with its state in `/srv/inbox-relay-data` (0700, outside the checkout).
+The relay is a systemd unit, not a container: `deploy/relay.service` is the unit as
+installed at `/etc/systemd/system/relay.service`. It runs the binary from
+`/srv/relay/relay` behind the host's reverse proxy on 127.0.0.1:8010, with its state
+in `/srv/inbox-relay-data` (the directory the Python service used, so paired phones
+survive) and its keys in `/srv/relay-config/keys.json`.
 
-    git -C /srv/inbox-relay pull && (cd /srv/inbox-relay && uv sync)
-    sudo systemctl daemon-reload && sudo systemctl restart inbox-relay
+    (cd server && CGO_ENABLED=0 go build -o /tmp/relay ./cmd/relay)
+    sudo install -m 0755 /tmp/relay /srv/relay/relay
+    sudo systemctl daemon-reload && sudo systemctl restart relay
 
 Check that a restart keeps channels: `channels.json` exists in the state directory
-at 0600 and survives a second restart. The `Dockerfile` is the same service for a
+at 0600 and survives a second restart. `server/Dockerfile` is the same service for a
 container host, with `/data` as the volume.
-
-Tests: `uv run pytest -q`.
 
 ## Protocol
 
