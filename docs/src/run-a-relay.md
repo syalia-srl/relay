@@ -73,7 +73,7 @@ cat > keys.json <<EOF
   "relay_id": "relay.example.com",
   "issuers": {},
   "keys": [
-    {"id": "ainbox", "sha256": "$DIGEST", "channels": 200,
+    {"id": "my-app", "sha256": "$DIGEST", "channels": 200,
      "creates_per_minute": 20, "bytes_per_day": 2000000000}
   ]
 }
@@ -88,7 +88,7 @@ The complete shape, with a second key that has no limits:
   "issuers": {},
   "keys": [
     {
-      "id": "ainbox",
+      "id": "my-app",
       "sha256": "6f0a...e21c",
       "channels": 200,
       "creates_per_minute": 20,
@@ -161,14 +161,15 @@ ProtectControlGroups=yes
 WantedBy=multi-user.target
 ```
 
-The account, directories and unit are installed with:
+The account, directories and unit are installed from the root of the checkout, with
+`keys.json` written there:
 
 ```bash
 sudo useradd --system --no-create-home --home-dir /var/lib/relay \
     --shell /usr/sbin/nologin relay
 sudo install -d -m 0755 /srv/relay
 sudo install -d -m 0750 -o root -g relay /etc/relay
-sudo install -m 0755 relay /srv/relay/relay
+sudo install -m 0755 server/relay /srv/relay/relay
 sudo install -m 0640 -o root -g relay keys.json /etc/relay/keys.json
 sudo install -m 0644 deploy/relay.service /etc/systemd/system/relay.service
 sudo systemctl daemon-reload

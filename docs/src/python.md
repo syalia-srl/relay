@@ -36,10 +36,8 @@ host = await Host.open(
 
 The relay list is ordered. The host creates a pairing channel, and later one device
 channel, on each relay, and keeps a socket on each. `Relay` checks its URL against
-the policy of section 8.1: `wss`, or `ws` to a literal private address. A host may
-reach a relay by a different URL than the one it gives guests, which is how an
-install uses `ws://relay:8010` on a container network while its guests use
-`wss://relay.example.com`.
+the policy of section 8.1: `wss`, or `ws` to a literal private address. The host reaches each relay by the same URL it gives its guests, so that URL
+must pass the policy for both.
 
 `host.pair(name)` draws a device id, a pairing secret and the channels, and returns
 the open pairing:
