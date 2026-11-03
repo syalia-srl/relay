@@ -123,9 +123,7 @@ export class Device {
     } finally {
       if (signal !== undefined) signal.removeEventListener("abort", wake);
     }
-    if (aborted()) {
-      throw signal.reason ?? new DOMException("The operation was aborted.", "AbortError");
-    }
+    signal?.throwIfAborted();
   }
 }
 
@@ -896,6 +894,7 @@ export class Host {
   async _send(device, message, signal) {
     if (!(message instanceof Uint8Array)) throw new TypeError("a message is Uint8Array");
     while (true) {
+      signal?.throwIfAborted();
       if (this._closed) throw new RelayError("the host is closed");
       if (this._devices.get(device.id) !== device) throw new RelayError("the device is not bound");
       if (device._channels.size === 0) throw new RelayError("the device has no channel left");
