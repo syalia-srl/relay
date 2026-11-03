@@ -25,13 +25,13 @@ export function urlAllowed(url) {
   if (parts.protocol === "wss:") return true;
   if (parts.protocol !== "ws:") return false;
   const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i.exec(url)[1];
-  const rawHost = authority.startsWith("[")
-    ? authority.slice(0, authority.indexOf("]") + 1)
-    : authority.replace(/:\d*$/, "");
-  // §8.1 wants a literal address. WHATWG URL would also accept legacy forms
-  // such as ws://10.1, which mean the same address but are not literals.
-  if (rawHost.toLowerCase() !== parts.hostname) return false;
   const host = parts.hostname;
+  if (!host.startsWith("[")) {
+    const rawHost = authority.replace(/:\d*$/, "");
+    // §8.1 wants a literal address. WHATWG URL would also accept legacy forms
+    // such as ws://10.1, which mean the same address but are not literals.
+    if (rawHost.toLowerCase() !== host) return false;
+  }
   if (host.startsWith("[")) {
     // fc00::/7 is the only IPv6 a plain-text relay may have; a zone id or a
     // mapped IPv4 address never parses to it (PROTOCOL.md §8.1).
