@@ -490,9 +490,22 @@ def relay_token_vectors() -> dict:
     head, _, sig = good.rpartition(".")
     flipped = head + "." + b64url(bytes([base64.urlsafe_b64decode(sig + "==")[0] ^ 1]) +
                                   base64.urlsafe_b64decode(sig + "==")[1:])
+    def noncanonical(text: str) -> str:
+        """The same bytes with non-zero trailing bits in the last base64 digit."""
+        alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+        index = alphabet.index(text[-1])
+        return text[:-1] + alphabet[index | 1]
+
+    payload = json.dumps(claims, separators=(",", ":")).encode()
+    spaced = payload + b" "
+    spaced_body = "rt1." + noncanonical(b64url(spaced))
     cases = [
         ("valid", good, True),
         ("valid, with an unknown field", token({**claims, "note": "x"}), True),
+        ("payload with base64 padding", "rt1." + good.split(".")[1] + "=." + good.split(".")[2], False),
+        ("signature with base64 padding", good + "=", False),
+        ("signature with non-canonical trailing bits", head + "." + noncanonical(sig), False),
+        ("payload with non-canonical trailing bits", spaced_body + "." + b64url(issuer.sign(spaced_body.encode())), False),
         ("signed by another key", token(claims, other), False),
         ("signature with one bit flipped", flipped, False),
         ("unknown issuer", token({**claims, "iss": "nobody"}), False),
@@ -527,6 +540,16 @@ def relay_token_vectors() -> dict:
             "cases": [{"name": n, "token": t, "valid": v} for n, t, v in cases]}
 
 
+def strict_b64(text: str) -> bytes:
+    """Unpadded base64url with canonical trailing bits, as the relay requires."""
+    if "=" in text:
+        raise ValueError("padding")
+    raw = base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+    if base64.urlsafe_b64encode(raw).rstrip(b"=").decode() != text:
+        raise ValueError("non-canonical")
+    return raw
+
+
 def verify_relay_token(token: str, issuers: dict, relay_id: str, now: int) -> bool:
     if len(token.encode()) > 4096:
         return False
@@ -534,8 +557,8 @@ def verify_relay_token(token: str, issuers: dict, relay_id: str, now: int) -> bo
     if len(parts) != 3 or parts[0] != "rt1":
         return False
     try:
-        raw = base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4))
-        sig = base64.urlsafe_b64decode(parts[2] + "=" * (-len(parts[2]) % 4))
+        raw = strict_b64(parts[1])
+        sig = strict_b64(parts[2])
         claims = strict_json(raw)
     except ValueError:
         return False

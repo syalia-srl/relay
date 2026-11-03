@@ -97,7 +97,7 @@ def _free_port() -> int:
 class Relay:
     """One relay process with its own port, state file and keys file."""
 
-    def __init__(self, root: Path, env: dict[str, str] | None = None):
+    def __init__(self, root: Path, env: dict[str, str | None] | None = None):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
         self.port = _free_port()
@@ -119,7 +119,11 @@ class Relay:
                 "RELAY_V0": "on",
             }
         )
-        env.update(self.extra_env)
+        for name, value in self.extra_env.items():
+            if value is None:
+                env.pop(name, None)
+            else:
+                env[name] = value
         binary = os.environ["RELAY_BIN"]
         self.log = self.log_path.open("ab")
         self.proc = subprocess.Popen(
@@ -187,8 +191,8 @@ class Relay:
 
 
 @asynccontextmanager
-async def ws_connect(relay: Relay, path: str):
-    websocket = await connect(relay.ws_url(path), max_size=None)
+async def ws_connect(relay: Relay, path: str, origin: str | None = None):
+    websocket = await connect(relay.ws_url(path), max_size=None, origin=origin)
     try:
         yield websocket
     finally:

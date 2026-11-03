@@ -53,6 +53,7 @@ type Config struct {
 	KeysPath        string
 	V0              bool
 	MaxChannels     int64
+	MaxPendingAuth  int64
 	CreateBurst     float64
 	CreatePerMinute float64
 	SweepEvery      time.Duration
@@ -63,8 +64,9 @@ func ConfigFromEnv() Config {
 		Addr:            envOr("RELAY_ADDR", "127.0.0.1:8010"),
 		StatePath:       envOr("RELAY_STATE_PATH", "/data/channels.json"),
 		KeysPath:        envOr("RELAY_KEYS_PATH", ""),
-		V0:              !strings.EqualFold(envOr("RELAY_V0", "on"), "off"),
+		V0:              strings.EqualFold(envOr("RELAY_V0", ""), "on"),
 		MaxChannels:     envInt("RELAY_MAX_CHANNELS", 50000),
+		MaxPendingAuth:  envInt("RELAY_MAX_PENDING_AUTH", 1024),
 		CreateBurst:     float64(envInt("RELAY_CREATE_BURST", 30)),
 		CreatePerMinute: float64(envInt("RELAY_CREATE_PER_MINUTE", 30)),
 		SweepEvery:      5 * time.Minute,
@@ -98,6 +100,9 @@ type Server struct {
 	keys   atomic.Pointer[Keys]
 	quotas *Quotas
 	bucket *Bucket
+	// pending counts sockets that have not authenticated yet, across all
+	// channels; it is released when auth succeeds, fails or times out.
+	pending atomic.Int64
 }
 
 func New(cfg Config) (*Server, error) {
@@ -140,6 +145,11 @@ func (s *Server) Sweep() {
 func (s *Server) Shutdown() {
 	s.store.CloseAll(codeGoingAway)
 	s.store.Save()
+}
+
+// SaveIfDirty flushes coalesced channel-store changes for the periodic ticker.
+func (s *Server) SaveIfDirty() {
+	s.store.SaveIfDirty()
 }
 
 func (s *Server) Handler() http.Handler {
@@ -207,8 +217,13 @@ func (s *Server) deleteV1(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) wsV1(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	if !s.beginAuth() {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
 	conn, err := accept(w, r)
 	if err != nil {
+		s.endAuth()
 		return
 	}
 	ws := newWSConn(conn)
@@ -227,6 +242,7 @@ func (s *Server) wsV1(w http.ResponseWriter, r *http.Request) {
 	typ, data, err := readMessage(context.Background(), conn, 64<<10)
 	timer.Stop()
 	close(authed)
+	s.endAuth()
 	if err != nil {
 		ws.close(codeAuth, "auth")
 		return
@@ -235,15 +251,23 @@ func (s *Server) wsV1(w http.ResponseWriter, r *http.Request) {
 		ws.close(codeAuth, "auth")
 		return
 	}
-	var auth struct {
-		Auth string `json:"auth"`
+	value, err := decodeStrictJSON(data)
+	if err != nil {
+		ws.close(codeAuth, "auth")
+		return
 	}
-	if json.Unmarshal(data, &auth) != nil || auth.Auth == "" {
+	obj, ok := value.(map[string]any)
+	if !ok {
+		ws.close(codeAuth, "auth")
+		return
+	}
+	auth, ok := obj["auth"].(string)
+	if !ok || auth == "" {
 		ws.close(codeAuth, "auth")
 		return
 	}
 
-	ch, side, ok := s.store.ByToken(sha256.Sum256([]byte(auth.Auth)))
+	ch, side, ok := s.store.ByToken(sha256.Sum256([]byte(auth)))
 	if !ok || ch.V != 1 || ch.ID != id {
 		ws.close(codeAuth, "auth")
 		return
@@ -266,6 +290,23 @@ func (s *Server) wsV1(w http.ResponseWriter, r *http.Request) {
 		ws.sendSystem("peer_connected")
 	}
 	s.readLoop(ws, conn, ch, side, true)
+}
+
+// beginAuth takes one pending-auth slot, or reports that the global cap is
+// already reached and the upgrade must be refused before it is accepted.
+func (s *Server) beginAuth() bool {
+	if s.pending.Add(1) > s.cfg.MaxPendingAuth {
+		s.pending.Add(-1)
+		return false
+	}
+	return true
+}
+
+// endAuth releases a slot taken by beginAuth. It runs on every exit from the
+// auth phase: success, a bad frame, a read error or the timeout closing the
+// socket.
+func (s *Server) endAuth() {
+	s.pending.Add(-1)
 }
 
 func (s *Server) createV0(w http.ResponseWriter, r *http.Request) {
@@ -380,7 +421,12 @@ func (s *Server) readLoop(ws *wsConn, conn *websocket.Conn, ch *Channel, side in
 
 func accept(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		CompressionMode: websocket.CompressionDisabled,
+		// Authentication is a bearer token in the first frame, never a cookie
+		// or any other ambient credential, so a cross-site origin has nothing
+		// to hijack. Refusing it only locks out browsers and WebViews, which
+		// always send Origin.
+		InsecureSkipVerify: true,
+		CompressionMode:    websocket.CompressionDisabled,
 	})
 	if err == nil {
 		// Messages are bounded by the caller's own reader, which is what lets a

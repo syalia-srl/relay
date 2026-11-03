@@ -20,14 +20,16 @@ pairing on the next restart.
 
 ## Rules
 
-- v1 is `PROTOCOL.md` section 2. v0 is kept unchanged for one migration release;
-  `RELAY_V0=off` turns it off.
+- v1 is `PROTOCOL.md` section 2. v0 is kept unchanged for one migration release
+  and is off unless `RELAY_V0=on`.
 - A wrong v0 slot token is refused before the WebSocket handshake (HTTP 403). A v1
   socket that cannot authenticate is closed with 4401, whatever the reason.
 - A newer socket on a slot replaces the older one (4409); only the socket that
   holds the slot frees it.
 - Anonymous v0 creation is rate limited (`RELAY_CREATE_BURST`,
   `RELAY_CREATE_PER_MINUTE`) and the store is capped (`RELAY_MAX_CHANNELS`).
+  Sockets still waiting for `auth` are capped across the relay
+  (`RELAY_MAX_PENDING_AUTH`); above the cap an upgrade gets HTTP 503.
   Unscanned channels leave after an hour, abandoned ones after 30 days with no
   socket.
 - No log line carries a token, a channel id beyond its first 8 characters, or a

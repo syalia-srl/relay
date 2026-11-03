@@ -32,11 +32,24 @@ async def test_a_restarted_relay_still_opens_the_socket(relay):
 
 def test_the_store_file_holds_no_token_and_is_private(relay):
     channel = relay.create_v0()
+    relay.stop()  # SIGTERM flushes the coalesced store
     raw = relay.state_path.read_text()
     assert channel["token_mobile"] not in raw
     assert channel["token_bridge"] not in raw
     mode = stat.S_IMODE(os.stat(relay.state_path).st_mode)
     assert mode == 0o600
+
+
+async def test_a_foreign_origin_is_allowed(relay):
+    # v0 has no auth frame, but browsers still send Origin and the upgrade
+    # must succeed for the same reason as v1: no ambient credential exists.
+    channel = relay.create_v0()
+    async with ws_connect(
+        relay,
+        f"/ws/{channel['channel_id']}?token={channel['token_mobile']}",
+        origin="https://app.example",
+    ):
+        pass
 
 
 async def test_a_wrong_token_is_refused_before_the_handshake(relay):
@@ -156,6 +169,20 @@ async def test_logs_never_carry_a_token(relay):
     assert channel["token_mobile"] not in logs
     assert channel["token_bridge"] not in logs
     assert "token=" not in logs
+
+
+def test_v0_is_off_by_default(make_relay):
+    relay = make_relay(RELAY_V0=None)
+    assert httpx.post(relay.url("/channels")).status_code == 404
+    assert httpx.get(relay.url("/ws/whatever"), headers={"Connection": "Upgrade"}).status_code == 404
+    # v1 still works with v0 left at its default.
+    assert relay.channel_v1()["channel"]
+
+
+def test_v0_is_on_when_asked_case_insensitively(make_relay):
+    relay = make_relay(RELAY_V0="ON")
+    channel = relay.create_v0()
+    assert len(channel["channel_id"]) == 64
 
 
 def test_v0_can_be_switched_off(make_relay):
