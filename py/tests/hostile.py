@@ -120,6 +120,11 @@ class HostileProxy:
                     await destination.send(b"\x01\x05")
                 elif action == "flip":
                     await destination.send(message[:3] + bytes([message[3] ^ 0x01]) + message[4:])
+                elif action == "oversize":
+                    # A system frame larger than any L1 frame. Before the read
+                    # limit the client skips it and stays connected.
+                    oversized = bytearray(70_000)
+                    await destination.send(bytes(oversized))
                 else:
                     await destination.send(message)
         except ConnectionClosed:

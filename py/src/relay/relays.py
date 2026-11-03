@@ -23,6 +23,10 @@ _PRIVATE_V4 = tuple(
 _PRIVATE_V6 = ip_network("fc00::/7")
 
 HTTP_TIMEOUT = 10
+# One L1 frame is at most 65,536 bytes and a system frame is tiny.
+MAX_RELAY_FRAME = 65537
+# The small JSON the host reads from the relay is under 200 bytes.
+MAX_RELAY_BODY = 65536
 
 
 def url_allowed(url: object) -> bool:
@@ -183,9 +187,9 @@ def _request(method: str, url: str, bearer: str, body: bytes | None) -> tuple[in
     )
     try:
         with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
-            return response.status, response.read()
+            return response.status, response.read(MAX_RELAY_BODY)
     except urllib.error.HTTPError as error:
-        return error.code, error.read()
+        return error.code, error.read(MAX_RELAY_BODY)
     except OSError as error:
         raise RelayError(f"the relay answered nothing: {error}") from error
 
@@ -214,7 +218,7 @@ class Socket:
     async def open(self) -> None:
         """Connect, send `auth` and wait for `ready`."""
         try:
-            self._websocket = await connect(self._url, max_size=None)
+            self._websocket = await connect(self._url, max_size=MAX_RELAY_FRAME)
             await self._websocket.send(json.dumps({"auth": self._token}))
             while True:
                 message = await self._websocket.recv()

@@ -19,7 +19,13 @@ import (
 	"github.com/coder/websocket"
 )
 
-const httpTimeout = 10 * time.Second
+const (
+	httpTimeout = 10 * time.Second
+	// maxRelayFrame is one L1 frame: its type byte plus maxTransport.
+	maxRelayFrame = 65537
+	// maxRelayBody bounds the small JSON the host reads from the relay.
+	maxRelayBody = 64 << 10
+)
 
 var httpClient = &http.Client{
 	Timeout:   httpTimeout,
@@ -241,7 +247,7 @@ func relayRequest(ctx context.Context, method, endpoint, bearer string, body io.
 		return 0, nil, fmt.Errorf("the relay answered nothing: %w", err)
 	}
 	defer response.Body.Close()
-	answer, err := io.ReadAll(response.Body)
+	answer, err := io.ReadAll(io.LimitReader(response.Body, maxRelayBody))
 	if err != nil {
 		return 0, nil, fmt.Errorf("the relay answered nothing: %w", err)
 	}
@@ -266,9 +272,9 @@ func (s *socket) Open(ctx context.Context) error {
 	if err != nil {
 		return socketError(ctx, err)
 	}
-	// Lengths are checked by the protocol reader, so the relay's own 1 MiB
-	// frame limit is the only bound this client needs.
-	conn.SetReadLimit(-1)
+	// One L1 frame is at most 65,536 bytes and a system frame is tiny, so a
+	// larger message from the relay fails the socket instead of filling memory.
+	conn.SetReadLimit(maxRelayFrame)
 	s.mu.Lock()
 	s.conn = conn
 	s.mu.Unlock()

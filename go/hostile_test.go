@@ -209,6 +209,14 @@ func (p *hostileProxy) pipe(source, destination *websocket.Conn, direction strin
 			if destination.Write(ctx, websocket.MessageBinary, copyOfData) != nil {
 				return
 			}
+		case "oversize":
+			// A system frame larger than any L1 frame. Before the read limit the
+			// client skips it and stays connected, so the test sees no reconnect.
+			oversized := make([]byte, 70_000)
+			oversized[0] = 0x00
+			if destination.Write(ctx, websocket.MessageBinary, oversized) != nil {
+				return
+			}
 		default:
 			if destination.Write(ctx, websocket.MessageBinary, data) != nil {
 				return
@@ -218,7 +226,7 @@ func (p *hostileProxy) pipe(source, destination *websocket.Conn, direction strin
 }
 
 func TestHostileRelay(t *testing.T) {
-	for _, action := range []string{"drop", "duplicate", "reorder", "delay", "relabel", "flip"} {
+	for _, action := range []string{"drop", "duplicate", "reorder", "delay", "relabel", "flip", "oversize"} {
 		t.Run(action, func(t *testing.T) {
 			directory := t.TempDir()
 			process := startRelay(t, filepath.Join(directory, "relay"))
@@ -263,10 +271,22 @@ func TestHostileRelay(t *testing.T) {
 			}
 			waitFor(t, func() bool { return replies.has([]byte("sync")) })
 
-			proxy.arm("up", action, 300*time.Millisecond)
-			proxy.arm("down", action, 300*time.Millisecond)
-			_ = link.Send(ctx, []byte("one"))
-			_ = device.Send(ctx, []byte("two"))
+			if action == "oversize" {
+				// Only the host's socket gets the oversized frame: the guest sends
+				// next, so the damaged down frame is the one the host reads.
+				_, sockets := proxy.counts()
+				proxy.arm("down", action, 300*time.Millisecond)
+				_ = link.Send(ctx, []byte("one"))
+				waitFor(t, func() bool {
+					_, now := proxy.counts()
+					return now > sockets
+				})
+			} else {
+				proxy.arm("up", action, 300*time.Millisecond)
+				proxy.arm("down", action, 300*time.Millisecond)
+				_ = link.Send(ctx, []byte("one"))
+				_ = device.Send(ctx, []byte("two"))
+			}
 			sendUntil(t, func(message []byte) error { return link.Send(ctx, message) }, []byte("after"),
 				func() bool { return received.has([]byte("after")) })
 			sendUntil(t, func(message []byte) error { return device.Send(ctx, message) }, []byte("after"),

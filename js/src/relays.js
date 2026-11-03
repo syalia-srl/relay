@@ -9,6 +9,13 @@ import { ChannelGone, ProtocolViolation, RelayError, SocketClosed } from "./erro
 import { isB64Url, parse } from "./strictjson.js";
 
 const HTTP_TIMEOUT = 10_000;
+// One L1 frame is at most 65,536 bytes and a system frame is tiny.
+const MAX_FRAME = 65537;
+// The small JSON the host reads from the relay is under 200 bytes.
+const MAX_BODY = 64 * 1024;
+// Messages wait for the application; a full queue closes the socket instead of
+// growing without limit.
+const MAX_QUEUE = 64;
 
 /** PROTOCOL.md §8.1: the relay URLs a guest and a host may exchange. */
 export function urlAllowed(url) {
@@ -150,8 +157,11 @@ export async function createChannel(relay) {
   }
   let value;
   try {
-    value = parse(await response.text());
-  } catch {
+    const body = new Uint8Array(await response.arrayBuffer());
+    if (body.length > MAX_BODY) throw new RelayError("the relay answered too large a body");
+    value = parse(new TextDecoder().decode(body));
+  } catch (error) {
+    if (error instanceof RelayError) throw error;
     throw new RelayError("the relay answered invalid JSON");
   }
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -190,7 +200,7 @@ export class Socket {
   #token;
   #websocket = null;
   #closed = null;
-  #messages = new Queue();
+  #messages = new Queue(MAX_QUEUE);
   #sendLock = new Mutex();
   #opened = Promise.withResolvers();
 
@@ -285,12 +295,29 @@ export class Socket {
   }
 
   #receive(data) {
+    const size = typeof data === "string" ? utf8(data).length : data.byteLength;
+    if (size > MAX_FRAME) {
+      this.#fail(1009);
+      return;
+    }
     if (typeof data === "string") {
-      this.#messages.tryPush({ text: data });
+      if (!this.#messages.tryPush({ text: data })) this.#fail(1009);
       return;
     }
     // binaryType is "arraybuffer", so this is an ArrayBuffer.
-    this.#messages.tryPush({ binary: new Uint8Array(data) });
+    if (!this.#messages.tryPush({ binary: new Uint8Array(data) })) this.#fail(1009);
+  }
+
+  #fail(code) {
+    // Closing the queue makes a reader that drains it see the failure even
+    // when the closed marker itself cannot fit.
+    this.#messages.close();
+    this.#shut(code);
+    try {
+      this.#websocket?.close(code);
+    } catch {
+      // The socket may already be closing.
+    }
   }
 
   #shut(code) {

@@ -128,6 +128,12 @@ export class HostileProxy {
         destination.send(copy, { binary: true });
         return;
       }
+      case "oversize": {
+        // A system frame larger than any L1 frame. Before the size check the
+        // client skips it and stays connected.
+        destination.send(Buffer.alloc(70_000), { binary: true });
+        return;
+      }
       default:
         destination.send(data, { binary: true });
     }
