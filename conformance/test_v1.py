@@ -19,6 +19,7 @@ from relaytest import (
     recv,
     sha256_hex,
     v1_socket,
+    ws_connect,
 )
 
 
@@ -182,6 +183,18 @@ async def test_a_malformed_auth_is_4401(relay):
     async with v1_socket(relay, channel["channel"]) as websocket:
         await websocket.send(b"\x01binary")
         await expect_close(websocket, 4401)
+
+
+async def test_a_foreign_origin_is_allowed(relay):
+    # A browser or WebView always sends Origin. Authentication is the bearer
+    # token in the first frame, never a cookie, so the upgrade must not be
+    # refused for a cross-site origin.
+    channel = relay.channel_v1()
+    async with ws_connect(
+        relay, f"/v1/ws/{channel['channel']}", origin="https://app.example"
+    ) as websocket:
+        await websocket.send(json.dumps({"auth": channel["host_token"]}))
+        assert await read_event(websocket) == "ready"
 
 
 async def test_ready_comes_before_peer_connected(relay):

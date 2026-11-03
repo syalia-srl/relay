@@ -380,7 +380,12 @@ func (s *Server) readLoop(ws *wsConn, conn *websocket.Conn, ch *Channel, side in
 
 func accept(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		CompressionMode: websocket.CompressionDisabled,
+		// Authentication is a bearer token in the first frame, never a cookie
+		// or any other ambient credential, so a cross-site origin has nothing
+		// to hijack. Refusing it only locks out browsers and WebViews, which
+		// always send Origin.
+		InsecureSkipVerify: true,
+		CompressionMode:    websocket.CompressionDisabled,
 	})
 	if err == nil {
 		// Messages are bounded by the caller's own reader, which is what lets a

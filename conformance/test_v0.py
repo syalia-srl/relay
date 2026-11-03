@@ -39,6 +39,18 @@ def test_the_store_file_holds_no_token_and_is_private(relay):
     assert mode == 0o600
 
 
+async def test_a_foreign_origin_is_allowed(relay):
+    # v0 has no auth frame, but browsers still send Origin and the upgrade
+    # must succeed for the same reason as v1: no ambient credential exists.
+    channel = relay.create_v0()
+    async with ws_connect(
+        relay,
+        f"/ws/{channel['channel_id']}?token={channel['token_mobile']}",
+        origin="https://app.example",
+    ):
+        pass
+
+
 async def test_a_wrong_token_is_refused_before_the_handshake(relay):
     channel = relay.create_v0()
     with pytest.raises(InvalidStatus) as refused:

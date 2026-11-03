@@ -187,8 +187,8 @@ class Relay:
 
 
 @asynccontextmanager
-async def ws_connect(relay: Relay, path: str):
-    websocket = await connect(relay.ws_url(path), max_size=None)
+async def ws_connect(relay: Relay, path: str, origin: str | None = None):
+    websocket = await connect(relay.ws_url(path), max_size=None, origin=origin)
     try:
         yield websocket
     finally:
