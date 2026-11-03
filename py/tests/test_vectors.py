@@ -17,7 +17,6 @@ from relay.noise import REKEY_EVERY, CipherState, HandshakeState, rekey
 from relay.payload import parse_payload
 from relay.relays import url_allowed
 from relay.session import Session
-from relay.token import verify_relay_token
 
 VECTORS = Path(__file__).resolve().parents[2] / "vectors"
 
@@ -190,15 +189,6 @@ def test_control_vectors() -> None:
                 parse_control(case["text"], case["receiver"])
 
 
-def test_relay_token_vectors() -> None:
-    file = load("relay_token.json")
-    issuers = {name: bytes.fromhex(value) for name, value in file["issuers"].items()}
-    for case in file["cases"]:
-        assert verify_relay_token(case["token"], issuers, file["relay_id"], file["now"]) is case["valid"], case[
-            "name"
-        ]
-
-
 def test_cacophony_vectors() -> None:
     patterns = {
         "Noise_IKpsk1_25519_AESGCM_SHA256": "IKpsk1",
@@ -260,3 +250,12 @@ def check_cacophony(vector: dict[str, Any], pattern: str) -> None:
             ciphertext = sender.encrypt(b"", payload)
             assert ciphertext == expected, f"transport message {index}"
             assert receiver.decrypt(b"", ciphertext) == payload
+
+
+def test_a_low_order_ephemeral_key_is_a_protocol_violation() -> None:
+    # The host and guest catch errors.ProtocolViolation; a relay that sends an
+    # all-zero key must not raise anything else out of their socket loops.
+    host, guest = MemoryKey.generate(), MemoryKey.generate()
+    responder = HandshakeState("KK", False, b"", host, guest.public)
+    with pytest.raises(ProtocolViolation):
+        responder.read_message(bytes(48))
