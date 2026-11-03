@@ -8,6 +8,8 @@ import time
 import httpx
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from websockets.asyncio.client import connect
+from websockets.exceptions import InvalidStatus
 
 from relaytest import (
     LOCAL_KEY,
@@ -157,6 +159,31 @@ async def test_a_token_for_another_channel_is_4401(relay):
     second = relay.channel_v1()
     async with v1_socket(relay, first["channel"], second["host_token"]) as websocket:
         await expect_close(websocket, 4401)
+
+
+async def test_pending_auth_sockets_are_capped(make_relay):
+    relay = make_relay(RELAY_MAX_PENDING_AUTH="2")
+    channel = relay.channel_v1()
+    path = f"/v1/ws/{channel['channel']}"
+    idle = [await connect(relay.ws_url(path), max_size=None) for _ in range(2)]
+    try:
+        with pytest.raises(InvalidStatus) as refused:
+            await connect(relay.ws_url(path), max_size=None)
+        assert refused.value.response.status_code == 503
+    finally:
+        for websocket in idle:
+            await websocket.close()
+    # Leaving an idle socket releases its slot, so a new upgrade is accepted.
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            async with connect(relay.ws_url(path), max_size=None) as websocket:
+                await websocket.send(json.dumps({"auth": channel["host_token"]}))
+                assert await read_event(websocket) == "ready"
+            return
+        except (InvalidStatus, OSError):
+            assert time.monotonic() < deadline, "the pending-auth counter never released"
+            await asyncio.sleep(0.05)
 
 
 async def test_a_late_auth_is_4401(relay):

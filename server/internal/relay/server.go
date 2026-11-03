@@ -53,6 +53,7 @@ type Config struct {
 	KeysPath        string
 	V0              bool
 	MaxChannels     int64
+	MaxPendingAuth  int64
 	CreateBurst     float64
 	CreatePerMinute float64
 	SweepEvery      time.Duration
@@ -65,6 +66,7 @@ func ConfigFromEnv() Config {
 		KeysPath:        envOr("RELAY_KEYS_PATH", ""),
 		V0:              strings.EqualFold(envOr("RELAY_V0", ""), "on"),
 		MaxChannels:     envInt("RELAY_MAX_CHANNELS", 50000),
+		MaxPendingAuth:  envInt("RELAY_MAX_PENDING_AUTH", 1024),
 		CreateBurst:     float64(envInt("RELAY_CREATE_BURST", 30)),
 		CreatePerMinute: float64(envInt("RELAY_CREATE_PER_MINUTE", 30)),
 		SweepEvery:      5 * time.Minute,
@@ -98,6 +100,9 @@ type Server struct {
 	keys   atomic.Pointer[Keys]
 	quotas *Quotas
 	bucket *Bucket
+	// pending counts sockets that have not authenticated yet, across all
+	// channels; it is released when auth succeeds, fails or times out.
+	pending atomic.Int64
 }
 
 func New(cfg Config) (*Server, error) {
@@ -207,8 +212,13 @@ func (s *Server) deleteV1(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) wsV1(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	if !s.beginAuth() {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
 	conn, err := accept(w, r)
 	if err != nil {
+		s.endAuth()
 		return
 	}
 	ws := newWSConn(conn)
@@ -227,6 +237,7 @@ func (s *Server) wsV1(w http.ResponseWriter, r *http.Request) {
 	typ, data, err := readMessage(context.Background(), conn, 64<<10)
 	timer.Stop()
 	close(authed)
+	s.endAuth()
 	if err != nil {
 		ws.close(codeAuth, "auth")
 		return
@@ -266,6 +277,23 @@ func (s *Server) wsV1(w http.ResponseWriter, r *http.Request) {
 		ws.sendSystem("peer_connected")
 	}
 	s.readLoop(ws, conn, ch, side, true)
+}
+
+// beginAuth takes one pending-auth slot, or reports that the global cap is
+// already reached and the upgrade must be refused before it is accepted.
+func (s *Server) beginAuth() bool {
+	if s.pending.Add(1) > s.cfg.MaxPendingAuth {
+		s.pending.Add(-1)
+		return false
+	}
+	return true
+}
+
+// endAuth releases a slot taken by beginAuth. It runs on every exit from the
+// auth phase: success, a bad frame, a read error or the timeout closing the
+// socket.
+func (s *Server) endAuth() {
+	s.pending.Add(-1)
 }
 
 func (s *Server) createV0(w http.ResponseWriter, r *http.Request) {
