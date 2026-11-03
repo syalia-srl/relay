@@ -492,18 +492,19 @@ func (h *Host) Revoke(ctx context.Context, device *Device) error {
 	return nil
 }
 
-// Recv waits for one message from any bound device.
+// Recv waits for one message from any bound device. After Close it still
+// returns the messages already received, then ErrClosed.
 func (h *Host) Recv(ctx context.Context) (*Device, []byte, error) {
-	select {
-	case <-h.ctx.Done():
-		return nil, nil, ErrClosed
-	default:
-	}
 	select {
 	case item := <-h.inbox:
 		return item.device, item.message, nil
 	case <-h.ctx.Done():
-		return nil, nil, ErrClosed
+		select {
+		case item := <-h.inbox:
+			return item.device, item.message, nil
+		default:
+			return nil, nil, ErrClosed
+		}
 	case <-ctx.Done():
 		return nil, nil, ctx.Err()
 	}
@@ -960,6 +961,9 @@ func (h *Host) runSocket(item *channel, retry *backoff) (result outcome) {
 		if socket != nil {
 			socket.Close()
 		}
+		item.mu.Lock()
+		item.socket = nil
+		item.mu.Unlock()
 		h.dropSession(item)
 	}()
 	socket = newSocket(item.url, item.id, item.hostToken)
@@ -968,6 +972,13 @@ func (h *Host) runSocket(item *channel, retry *backoff) (result outcome) {
 	cancel()
 	if err != nil {
 		return h.socketOutcome(item, err)
+	}
+	// stop() closes the socket the channel holds, which ends the Recv below.
+	item.mu.Lock()
+	item.socket = socket
+	item.mu.Unlock()
+	if item.stopped() {
+		return outcomeRetry
 	}
 	retry.reset()
 	for {
@@ -1017,7 +1028,6 @@ func (h *Host) dropSession(item *channel) {
 	item.mu.Lock()
 	item.session = nil
 	item.candidate = nil
-	item.socket = nil
 	device := item.device
 	item.mu.Unlock()
 	if device != nil {
@@ -1230,7 +1240,6 @@ func (h *Host) promote(item *channel, socket *socket, expected *candidate, kind 
 	}
 	item.candidate = nil
 	item.session = expected.session
-	item.socket = socket
 	item.guest = bytes.Clone(expected.guest)
 	item.mu.Unlock()
 
