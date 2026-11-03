@@ -79,9 +79,9 @@
         "content": "byte i is i mod 251",
         "sha256": "ad1ef0691fb991b349e78a76cbe007ec607089e2cf116713a195172566cf2af6",
         "frames": [
+          4,
           5,
-          6,
-          7
+          6
         ]
       }
     }

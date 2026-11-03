@@ -1,5 +1,5 @@
 {
-  "description": "PROTOCOL.md 5: a pairing with Noise_IKpsk1. The guest sends `frame1`, the host answers `frame2`, both derive `pairing_code`, then the transport frames follow in order. Frames are whole L0 data frames (0x01, then the L1 type byte). `refused` lists first messages the host must fail to read.",
+  "description": "PROTOCOL.md 5: a pairing with Noise_IKpsk1. The guest sends `frame1`, the host answers `frame2`, both derive `pairing_code`, then the transport frames follow in order. The person types the code into the host between transport frames 1 and 2 (`confirmed_before_frame`); `relays` is never sent before that. Frames are whole L0 data frames (0x01, then the L1 type byte). `refused` lists first messages the host must fail to read.",
   "cases": [
     {
       "protocol_name": "Noise_IKpsk1_25519_AESGCM_SHA256",
@@ -35,7 +35,8 @@
           "frame": "010453afb74bc9393652ea4b71530cd8671edf2231e6f782a5a5815b138feefa9804675cb935565f1f32457692cfcff49bed33b00da206b02c709c45166204f902205fdbf162ab61f36048d2897942daf756bce5674d1c7640ce8fd263b61e444b85b84c4b944c73c0f56cc563648628fb7383b890e08318474220b58de5820cc72dc4395b8486165db74b0b6ff3c5a9aaa77aa66bf7b86bd477d617e7f3f4dc426c710e1b0ddbd5a866b16460dac147a276c46a4084935eb8b6edb8ab2022d64897f96f99e3b15049779ce6f5d7deb377d65ab5a3bd0c6e279101f728cd9259ef8d242fca9bbede46cf185bef3bab67c2507b6cd8fab9dfec64fc5c9519ee2bca1898d89314650c665cbbded484e9e4bc06bd219e548c5c8459ea00f78519"
         }
       ],
-      "pairing_code": "442705"
+      "pairing_code": "442705",
+      "confirmed_before_frame": 2
     }
   ],
   "refused": [

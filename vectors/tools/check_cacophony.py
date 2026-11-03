@@ -45,6 +45,8 @@ def run(vector: dict) -> None:
 def main() -> None:
     path = sys.argv[1] if len(sys.argv) > 1 else Path(__file__).with_name("cacophony_subset.json")
     vectors = [v for v in json.load(open(path))["vectors"] if v["protocol_name"] in PROTOCOLS]
+    found = sorted(v["protocol_name"] for v in vectors)
+    assert found == sorted(PROTOCOLS), f"expected one vector per protocol, found {found}"
     for vector in vectors:
         run(vector)
     print(f"{len(vectors)} cacophony vectors pass for IKpsk1 and KK")
