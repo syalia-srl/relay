@@ -70,8 +70,7 @@ and every v1 rule, and a Go unit test replays every case of
 The relay is a systemd unit, not a container: `deploy/relay.service` is the unit as
 installed at `/etc/systemd/system/relay.service`. It runs the binary from
 `/srv/relay/relay` behind the host's reverse proxy on 127.0.0.1:8010, with its state
-in `/srv/inbox-relay-data` (the directory the Python service used, so paired phones
-survive) and its keys in `/srv/relay-config/keys.json`.
+in `/var/lib/relay` (systemd's `StateDirectory`) and its keys in `/etc/relay/keys.json`.
 
     (cd server && CGO_ENABLED=0 go build -o /tmp/relay ./cmd/relay)
     sudo install -m 0755 /tmp/relay /srv/relay/relay
