@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+# Internal module of noiseprotocol, safe because pyproject.toml pins noiseprotocol==0.3.1.
 from noise.backends.default.ciphers import AESGCMCipher
 from noise.connection import Keypair, NoiseConnection
 

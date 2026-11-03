@@ -160,10 +160,10 @@ Close codes:
 |---|---|---|
 | 4400 | Protocol violation: a text frame after `auth`, a client frame whose first byte is not `0x01`. | Fix itself; treat as a failed relay. |
 | 4401 | Authentication failed (unknown channel, wrong token, malformed or late `auth`). | The channel is gone for it (section 8.4). |
-| 4409 | Replaced by a newer socket for the same side. | Reconnect only if it did not open the newer socket itself, after the backoff of section 8.2. |
+| 4409 | Replaced by a newer socket for the same side. | Keep the newer socket if it opened it itself; otherwise reconnect after the backoff of section 8.2. |
 | 4410 | The channel was deleted. | The channel is gone for it (section 8.4). |
 | 4413 | A data frame whose body is longer than 1 MiB. | Treat as a failed relay. |
-| 4429 | The channel's key is over its `bytes_per_day`. The relay also refuses `auth` on the key's channels with 4429 until 00:00 UTC. | Treat as a failed relay. |
+| 4429 | The channel's key is over its `bytes_per_day`. The relay also refuses `auth` on the key's channels with 4429 until 00:00 UTC. | Treat as a failed relay until 00:00 UTC. |
 
 ### 2.5 Lifetime
 
@@ -280,8 +280,7 @@ channels:
 - at most one **candidate** per pairing channel: a guest key, a session and a
   handshake hash `h` from a `pair` or `connect` that has been answered but not yet
   proved (section 6.3);
-- up to 4 **pending** keys, each with the code derived from its `h`;
-- the time the first key became pending.
+- up to 4 **pending** keys, each with the code derived from its `h`.
 
 ### 5.2 The host prepares
 
@@ -312,10 +311,10 @@ the key, so a code the person types is never one the host does not yet hold.
 
 The host promotes the candidate when a transport frame decrypts under it (section
 6.3): its guest key becomes pending with its code. A key has at most one pending
-entry and one code, the one from its first promoted `pair`; a later `pair` candidate
-for a key already pending is aborted when it would be promoted. A guest sends `pair`
-once per pairing and uses `connect` for every later socket, on any of the pairing
-channels. A relay that replays a recorded `pair` gets an `accept` it cannot use,
+entry and one code, the one from the `pair` that was promoted. Until the guest has
+seen its `pong`, it sends a fresh `pair` (with a fresh ephemeral key) on every new
+socket; once it has, it uses `connect` for every later socket, on any of the pairing
+channels. The host aborts a `pair` from a key that is already pending. A relay that replays a recorded `pair` gets an `accept` it cannot use,
 because it cannot produce the transport frame that follows.
 
 ### 5.4 While keys are pending
@@ -348,16 +347,18 @@ A pairing ends:
 - **bound**, on confirmation. The host binds the key to `dev`, erases the `psk`,
   forgets the other pending keys and candidates (aborting their sessions), and creates
   one fresh device channel per relay. It sends `relays` with them on the bound key's
-  current pairing session if there is one, and otherwise right after promoting the
-  bound key's next `connect` on a pairing channel. The host deletes the pairing
+  current pairing session if that session's socket is open, and otherwise right
+  after promoting the bound key's next `connect` on a pairing channel. The host deletes the pairing
   channels when a candidate of the bound key is promoted on a device channel. If that
   has not happened 10 minutes after confirmation, the guest never received its
   channels: the host unbinds the key, deletes the device channels and the pairing
   channels, and the pairing has failed. Until the pairing channels are deleted, the
   payload's guest tokens still open a socket on them, which gives a stranger nothing
   but the chance to displace the real guest there (4409).
-- **ended**, at `exp` with no confirmation, on a `close` from a pending key, or as
-  said above. The host deletes the pairing channels and forgets the pairing.
+- **ended**, at `exp` with no confirmation, on a `close` from a pending key, on a
+  collision or the third unmatched code, or when a bound guest does not reach its
+  device channels within 10 minutes. The host deletes the pairing channels (and, in
+  the last case, the device channels), unbinds any key, and forgets the pairing.
 
 ### 5.6 The pairing code
 
@@ -452,7 +453,10 @@ so no signal is needed; the nonce keeps counting. A session whose nonce would re
 
 ### 8.1 URL policy
 
-A relay is named by a base URL. A guest and a host MUST accept a relay URL only if it
+A relay is named by a base URL. This policy applies to every relay URL that crosses
+between the sides: in a pairing payload, in a `relays` message, and in what a host
+puts in them. A URL by which a host reaches a relay for itself is its own choice,
+within section 2.3. A guest and a host MUST accept a relay URL only if it
 is at most 2048 characters, is absolute, has no user info, query or fragment, has a
 port (when present) from 1 to 65535, and either
 
@@ -466,8 +470,8 @@ machine on the network can answer them), to loopback (127.0.0.0/8, ::1), to
 link-local addresses (169.254.0.0/16, fe80::/10) and to IPv4-mapped IPv6 addresses.
 Over `ws`, the network sees the guest token and the ciphertext; the guest token gives
 it the guest's slot on that one relay and nothing more, which is why each relay has
-its own channel and tokens. (The host token must not cross such a network at all,
-section 2.3.)
+its own channel and tokens. (The host's credentials must not cross such a network
+at all, section 2.3.)
 
 The socket URL is the base with one trailing `/` removed, then `/v1/ws/` and the
 channel id; the HTTP routes are built the same way.
@@ -487,10 +491,11 @@ A guest holds an ordered list of relays per host. It:
    success.
 
 The host keeps a socket on its side of every channel it holds, on every relay. When
-one closes without a code in the 4400 to 4499 range, or with 4429, it reconnects with
-the same backoff. On 4401 or 4410 it stops using the channel (section 8.4); on 4409
-another socket of its own holds the side, and it keeps that one; on 4400 or 4413 it
-stops using the relay and reports a fault.
+one closes without a code in the 4400 to 4499 range, it reconnects with the same
+backoff. On 4401 or 4410 it stops using the channel (section 8.4). On 4409 it keeps
+the newer socket if it opened one itself, and otherwise reconnects with the backoff.
+On 4429 it stops using the relay until 00:00 UTC. On 4400 or 4413 it stops using the
+relay and reports a fault.
 
 ### 8.3 The list
 
