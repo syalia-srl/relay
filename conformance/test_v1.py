@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import signal
 import time
 
 import httpx
@@ -16,6 +17,7 @@ from relaytest import (
     mint,
     read_event,
     recv,
+    sha256_hex,
     v1_socket,
 )
 
@@ -79,6 +81,27 @@ def test_a_token_over_4096_bytes_is_401(relay):
         }
     ).encode()
     assert relay.create_v1(mint("holder-1", payload=payload)).status_code == 401
+
+
+def test_sighup_reloads_the_keys_file(relay):
+    added = "key-added-by-reload"
+    assert relay.create_v1(added).status_code == 401
+    keys = json.loads(relay.keys_path.read_text())
+    keys["keys"].append(
+        {
+            "id": "added",
+            "sha256": sha256_hex(added),
+            "channels": 1,
+            "creates_per_minute": 1,
+            "bytes_per_day": 1,
+        }
+    )
+    relay.keys_path.write_text(json.dumps(keys))
+    relay.proc.send_signal(signal.SIGHUP)
+    deadline = time.monotonic() + 5
+    while relay.create_v1(added).status_code != 201:
+        assert time.monotonic() < deadline, "the reload never happened"
+        time.sleep(0.05)
 
 
 def test_the_key_comes_before_quota_and_capacity(make_relay):

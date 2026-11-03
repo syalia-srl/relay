@@ -317,17 +317,26 @@ func (s *Store) Create(v int, key string, limits [3]int64) (*Channel, string, st
 	return ch, tokA, tokB
 }
 
-// Remove deletes a channel and returns it with its sockets, for the caller to
-// close outside the lock.
-func (s *Store) Remove(id string) *Channel {
+// Delete removes a channel and closes both its sockets with code, without
+// waiting for their close handshakes.
+func (s *Store) Delete(id string, code int) bool {
 	s.mu.Lock()
 	ch := s.channels[id]
-	if ch != nil {
-		s.drop(ch)
-		s.saveLocked()
+	if ch == nil {
+		s.mu.Unlock()
+		return false
 	}
+	conns := ch.conns
+	ch.conns = [2]*wsConn{}
+	s.drop(ch)
+	s.saveLocked()
 	s.mu.Unlock()
-	return ch
+	for _, c := range conns {
+		if c != nil {
+			go c.close(code, "deleted")
+		}
+	}
+	return true
 }
 
 // GC forgets unscanned and abandoned channels; a connected one always stays.

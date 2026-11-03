@@ -371,38 +371,22 @@ func (s *Server) readLoop(ws *wsConn, conn *websocket.Conn, ch *Channel, side in
 	}
 }
 
-// Delete removes a channel and closes both sockets with code.
-func (s *Store) Delete(id string, code int) bool {
-	s.mu.Lock()
-	ch := s.channels[id]
-	if ch == nil {
-		s.mu.Unlock()
-		return false
-	}
-	conns := ch.conns
-	ch.conns = [2]*wsConn{}
-	s.drop(ch)
-	s.saveLocked()
-	s.mu.Unlock()
-	for _, c := range conns {
-		if c != nil {
-			go c.close(code, "deleted") // the answer must not wait for the echo
-		}
-	}
-	return true
-}
-
 func accept(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
-	return websocket.Accept(w, r, &websocket.AcceptOptions{
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		CompressionMode: websocket.CompressionDisabled,
 	})
+	if err == nil {
+		// Messages are bounded by the caller's own reader, which is what lets a
+		// too-large frame end in 4413 rather than the library's 1009.
+		conn.SetReadLimit(-1)
+	}
+	return conn, err
 }
 
 // readMessage reads one message up to limit bytes and returns how much it got.
 // Reading one byte past the limit is what lets the caller answer with the
 // protocol's own 4413 rather than the library's 1009.
 func readMessage(ctx context.Context, conn *websocket.Conn, limit int) (websocket.MessageType, []byte, error) {
-	conn.SetReadLimit(-1)
 	typ, reader, err := conn.Reader(ctx)
 	if err != nil {
 		return 0, nil, err
