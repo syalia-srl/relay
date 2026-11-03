@@ -30,14 +30,24 @@ from relay import Host, Relay
 
 host = await Host.open(
     "state/host",
-    relays=[Relay("wss://relay.syalia.dev", key=project_key)],
+    relays=[Relay(
+        "wss://relay.example.com",         # the guests' URL
+        key=project_key,
+        host_url="ws://127.0.0.1:8010",    # the host's own URL
+    )],
 )
 ```
 
 The relay list is ordered. The host creates a pairing channel, and later one device
-channel, on each relay, and keeps a socket on each. `Relay` checks its URL against
-the policy of section 8.1: `wss`, or `ws` to a literal private address. The host reaches each relay by the same URL it gives its guests, so that URL
-must pass the policy for both.
+channel, on each relay, and keeps a socket on each. Each `Relay` has two URLs. `url`
+is the guests' URL: it passes the policy of section 8.1 (`wss`, or `ws` to a literal
+private address), it is the only relay URL in pairing payloads and `relays` messages,
+and it carries the traffic between the two sides. `host_url` is optional and defaults
+to `url`; the host uses it for its own HTTP calls and sockets. A `ws://` host URL
+sends the project key and the host token in cleartext, so it is safe only on loopback
+or on a network whose only members are the host and the relay, such as a container
+network; the library cannot check that. The example runs the host on the relay's
+machine, so the host dials loopback and guests use the public `wss://` URL.
 
 `host.pair(name)` draws a device id, a pairing secret and the channels, and returns
 the open pairing:
