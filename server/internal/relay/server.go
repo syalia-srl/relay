@@ -495,14 +495,32 @@ func (w *wsConn) send(data []byte) error {
 	return w.write(data)
 }
 
-func (w *wsConn) close(code int, reason string) {
+// claimClose takes ownership of the socket's close, so the code that wins the
+// race is the one the client sees. It reports whether this call owns it.
+func (w *wsConn) claimClose() bool {
 	w.mu.Lock()
+	defer w.mu.Unlock()
 	if w.closed {
-		w.mu.Unlock()
-		return
+		return false
 	}
 	w.closed = true
 	w.queue = nil
-	w.mu.Unlock()
+	return true
+}
+
+// close sends a close frame and waits for the peer's echo.
+func (w *wsConn) close(code int, reason string) {
+	if !w.claimClose() {
+		return
+	}
 	w.conn.Close(websocket.StatusCode(code), reason)
+}
+
+// closeSoon claims the close now and writes the frame in the background, so a
+// caller holding a lock never waits on the network.
+func (w *wsConn) closeSoon(code int, reason string) {
+	if !w.claimClose() {
+		return
+	}
+	go w.conn.Close(websocket.StatusCode(code), reason)
 }

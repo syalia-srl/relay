@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/coder/websocket"
 )
 
 // A channel whose guest never came is a QR nobody scanned: gone after an hour.
@@ -333,12 +335,14 @@ func (s *Store) Delete(id string, code int) bool {
 	ch.conns = [2]*wsConn{}
 	s.drop(ch)
 	s.saveLocked()
-	s.mu.Unlock()
+	// Claim the sockets before the lock opens: their own read loops must not
+	// win the race with a normal 1000.
 	for _, c := range conns {
 		if c != nil {
-			go c.close(code, "deleted")
+			c.closeSoon(code, "deleted")
 		}
 	}
+	s.mu.Unlock()
 	return true
 }
 
@@ -418,12 +422,11 @@ func (s *Store) CloseAll(code int, onlyKey string) {
 			}
 		}
 	}
-	s.mu.Unlock()
-	// Each Close waits for the peer's echo, so they run side by side and the
-	// caller does not wait for any of them.
+
 	for _, c := range conns {
-		go c.close(code, "")
+		c.closeSoon(code, "")
 	}
+	s.mu.Unlock()
 }
 
 // CloseAllNow closes every socket and waits for the close handshakes, for a
@@ -441,13 +444,19 @@ func (s *Store) CloseAllNow(code int, onlyKey string) {
 			}
 		}
 	}
+	claimed := conns[:0]
+	for _, c := range conns {
+		if c.claimClose() {
+			claimed = append(claimed, c)
+		}
+	}
 	s.mu.Unlock()
 	var wg sync.WaitGroup
-	for _, c := range conns {
+	for _, c := range claimed {
 		wg.Add(1)
 		go func(c *wsConn) {
 			defer wg.Done()
-			c.close(code, "")
+			c.conn.Close(websocket.StatusCode(code), "")
 		}(c)
 	}
 	wg.Wait()
