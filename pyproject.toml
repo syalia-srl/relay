@@ -17,6 +17,8 @@ packages = ["src/inbox_relay"]
 
 [dependency-groups]
 dev = ["pytest", "pytest-asyncio", "httpx"]
+# A black-box suite: it starts the Go binary and talks HTTP and WebSocket to it.
+conformance = ["pytest", "pytest-asyncio", "httpx", "websockets", "cryptography>=44"]
 # The reference used to generate and check vectors/ (PROTOCOL.md section 12).
 vectors = ["cryptography>=44", "noiseprotocol==0.3.1"]
 

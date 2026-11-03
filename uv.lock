@@ -319,6 +319,13 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+conformance = [
+    { name = "cryptography" },
+    { name = "httpx" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "websockets" },
+]
 dev = [
     { name = "httpx" },
     { name = "pytest" },
@@ -336,6 +343,13 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+conformance = [
+    { name = "cryptography", specifier = ">=44" },
+    { name = "httpx" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "websockets" },
+]
 dev = [
     { name = "httpx" },
     { name = "pytest" },
