@@ -7,6 +7,7 @@ import secrets
 import time
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Self
 
 from cryptography.exceptions import InvalidTag
 
@@ -126,6 +127,10 @@ class PairedHost:
                 return
             except SocketClosed:
                 self._ready = False
+
+    async def unpair(self) -> None:
+        """Send `close` and wait for `closed`, then forget this host."""
+        await self._unpair()
 
     def __aiter__(self) -> AsyncIterator[bytes]:
         return self._messages()
@@ -451,6 +456,13 @@ class PairedHost:
         except (RelayError, SocketClosed):
             pass
 
+    async def _stop(self) -> None:
+        self._cancel_deadline()
+        if self._task is not None:
+            self._task.cancel()
+        if self._socket is not None:
+            await self._socket.close()
+
 
 class Guest:
     """The side that pairs with a host, then carries messages to it."""
@@ -528,7 +540,6 @@ class Guest:
         )
         link._psk = parsed.psk
         self._hosts[link._dev] = link
-        self._store(link)
         link._start()
         async with link._condition:
             await link._condition.wait_for(lambda: link._code != "" or link._terminal())
@@ -537,10 +548,16 @@ class Guest:
             raise PairingFailed("the pairing ended before the host showed a code")
         return link
 
-    async def unpair(self) -> None:
-        """Send `close` to every host and wait for `closed`."""
-        for link in list(self._hosts.values()):
-            await link._unpair()
+    async def close(self) -> None:
+        """Stop every connection. Paired hosts stay on disk."""
+        for link in self._hosts.values():
+            await link._stop()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        await self.close()
 
     def _forget(self, link: PairedHost) -> None:
         if self._hosts.get(link._dev) is link:
@@ -563,6 +580,8 @@ class Guest:
                         **({"static": link._private.hex()} if link._private is not None else {}),
                     }
                     for link in self._hosts.values()
+                    # A pairing that a restart interrupts starts over from a new payload.
+                    if link._state == "bound"
                 ]
             },
         )
