@@ -259,3 +259,18 @@ def test_a_low_order_ephemeral_key_is_a_protocol_violation() -> None:
     responder = HandshakeState("KK", False, b"", host, guest.public)
     with pytest.raises(ProtocolViolation):
         responder.read_message(bytes(48))
+
+
+def test_a_native_key_that_fails_its_dh_is_a_protocol_violation() -> None:
+    # A keystore reports a bad remote key with its own error; the socket loops
+    # only abort on ProtocolViolation.
+    class Native:
+        public = MemoryKey.generate().public
+
+        def dh(self, peer_public: bytes) -> bytes:
+            raise RuntimeError("keystore refused")
+
+    host = MemoryKey.generate()
+    guest = HandshakeState("KK", True, b"", Native(), host.public)
+    with pytest.raises(ProtocolViolation):
+        guest.write_message()

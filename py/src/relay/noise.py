@@ -178,7 +178,8 @@ class HandshakeState:
             if private is not None:
                 return x25519_dh(private, remote)
             return self._static.dh(remote)
-        except ValueError as error:
+        # A native key reports a bad remote key in its own way.
+        except Exception as error:
             raise ProtocolViolation("a remote X25519 key is invalid") from error
 
     def write_message(self, payload: bytes = b"") -> bytes:

@@ -1,0 +1,25 @@
+{
+  "name": "@syalia/relay",
+  "version": "0.1.0",
+  "description": "Host and guest of the relay channel protocol (PROTOCOL.md, sections 3 to 9)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "API.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "ws": "^8.18.0"
+  }
+}

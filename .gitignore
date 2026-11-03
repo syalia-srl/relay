@@ -7,3 +7,6 @@ dist/
 
 # The Go binary, built by hand or by CI.
 /server/relay
+
+# The JavaScript dev dependency (the hostile-relay proxy).
+/js/node_modules/

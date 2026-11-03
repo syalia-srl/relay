@@ -40,6 +40,31 @@ jobs:
         env:
           RELAY_BIN: ${{ github.workspace }}/server/relay
           RELAY_TEST_ADDR: 10.255.0.1
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - run: CGO_ENABLED=0 go build -o relay ./cmd/relay
+        working-directory: server
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: js/package-lock.json
+      - uses: astral-sh/setup-uv@v5
+      - name: give the tests a private address for ws:// (PROTOCOL.md 8.1)
+        run: sudo ip addr add 10.255.0.1/32 dev lo
+      - run: npm ci
+        working-directory: js
+      - run: node --test
+        working-directory: js
+        env:
+          RELAY_BIN: ${{ github.workspace }}/server/relay
+          RELAY_TEST_ADDR: 10.255.0.1
   vectors:
     runs-on: ubuntu-latest
     steps:
