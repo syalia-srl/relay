@@ -9,7 +9,6 @@ import signal
 import socket
 import subprocess
 import time
-from base64 import urlsafe_b64encode
 from pathlib import Path
 
 from relay.relays import url_allowed
@@ -34,10 +33,6 @@ def keys_file() -> dict:
             }
         ],
     }
-
-
-def b64(data: bytes) -> str:
-    return urlsafe_b64encode(data).rstrip(b"=").decode()
 
 
 def _free_port() -> int:
