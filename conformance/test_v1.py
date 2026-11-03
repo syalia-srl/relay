@@ -385,6 +385,14 @@ async def test_bytes_per_day_closes_with_4429_and_refuses_auth(relay):
         await expect_close(over, 4429)
 
 
+def test_a_channel_created_just_before_shutdown_survives(relay):
+    channel = relay.channel_v1()
+    relay.stop()  # no ticker has had time to run
+    relay.start()
+    raw = json.loads(relay.state_path.read_text())
+    assert any(row["channel_id"] == channel["channel"] for row in raw["channels"])
+
+
 async def test_a_v1_channel_survives_a_restart(relay):
     channel = relay.channel_v1()
     relay.restart()

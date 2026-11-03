@@ -147,6 +147,11 @@ func (s *Server) Shutdown() {
 	s.store.Save()
 }
 
+// SaveIfDirty flushes coalesced channel-store changes for the periodic ticker.
+func (s *Server) SaveIfDirty() {
+	s.store.SaveIfDirty()
+}
+
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/channels", s.createV1)

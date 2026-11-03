@@ -32,6 +32,7 @@ async def test_a_restarted_relay_still_opens_the_socket(relay):
 
 def test_the_store_file_holds_no_token_and_is_private(relay):
     channel = relay.create_v0()
+    relay.stop()  # SIGTERM flushes the coalesced store
     raw = relay.state_path.read_text()
     assert channel["token_mobile"] not in raw
     assert channel["token_bridge"] not in raw

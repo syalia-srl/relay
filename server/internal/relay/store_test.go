@@ -45,6 +45,7 @@ func TestTheStoreFileHoldsNoTokenAndIsPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	store.Save()
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -72,6 +73,7 @@ func TestV1ChannelsSurviveARestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	store.Save()
 	after := NewStore(path)
 	got, side, ok := after.ByToken(digestOf(hostToken))
 	if !ok || got.ID != ch.ID || side != host {
@@ -82,6 +84,51 @@ func TestV1ChannelsSurviveARestart(t *testing.T) {
 	}
 	if _, _, ok := after.ByToken(digestOf(guestToken)); !ok {
 		t.Fatal("the guest token did not survive a restart")
+	}
+}
+
+func TestCreateDoesNotRewriteTheStoreUntilSaved(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "channels.json")
+	store := NewStore(path)
+	ch, hostToken, _, err := store.Create(1, KeyInfo{}, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatal("Create wrote the store before the next flush")
+	}
+	store.Save()
+	after := NewStore(path)
+	if got, _, ok := after.ByToken(digestOf(hostToken)); !ok || got.ID != ch.ID {
+		t.Fatal("an explicit save did not persist the channel")
+	}
+}
+
+func TestDeleteIsCoalescedUntilSaved(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "channels.json")
+	store := NewStore(path)
+	ch, _, _, err := store.Create(1, KeyInfo{}, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.Save()
+	if !store.Delete(ch.ID, codeDeleted) {
+		t.Fatal("the channel was not deleted")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), ch.ID) {
+		t.Fatal("Delete rewrote the store before the next flush")
+	}
+	store.Save()
+	raw, err = os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), ch.ID) {
+		t.Fatal("the deleted channel survived an explicit save")
 	}
 }
 
@@ -140,6 +187,7 @@ func TestUnwritableStoreKeepsChannelsInMemory(t *testing.T) {
 	if store.Get(ch.ID) == nil {
 		t.Fatal("an unwritable store lost its channel")
 	}
+	store.Save()
 	if _, err := os.Stat(path); err == nil {
 		t.Fatal("the store wrote into a path it cannot use")
 	}
@@ -199,6 +247,7 @@ func TestSavedFileKeepsBothKindsOfRow(t *testing.T) {
 	store := NewStore(path)
 	v0, _, _, _ := store.Create(0, KeyInfo{}, 100)
 	v1, _, _, _ := store.Create(1, KeyInfo{ID: "sha256:def", Unlimited: true}, 100)
+	store.Save()
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

@@ -101,6 +101,7 @@ type Store struct {
 	tokens   map[[32]byte]tokenRef
 	alive    map[string]int // channels still alive per key id
 	warned   sync.Once
+	dirty    bool // changes not yet written
 }
 
 func NewStore(path string) *Store {
@@ -175,6 +176,7 @@ func (s *Store) drop(ch *Channel) {
 // fatal: the relay keeps every channel in memory and says so once.
 func (s *Store) saveLocked() {
 	if s.path == "" {
+		s.dirty = false
 		return
 	}
 	rows := make([]Channel, 0, len(s.channels))
@@ -218,6 +220,7 @@ func (s *Store) saveLocked() {
 		s.warn()
 		return
 	}
+	s.dirty = false
 }
 
 func (s *Store) warn() {
@@ -231,6 +234,18 @@ func (s *Store) Save() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.saveLocked()
+}
+
+// SaveIfDirty writes coalesced changes, if any. Creations and deletes only
+// mark the store, so a burst costs at most one rewrite per tick.
+func (s *Store) SaveIfDirty() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.dirty {
+		return false
+	}
+	s.saveLocked()
+	return true
 }
 
 func (s *Store) Len() int {
@@ -288,7 +303,7 @@ func (s *Store) Create(v int, key KeyInfo, maxChannels int64) (ch *Channel, host
 		return nil, "", "", errFull
 	}
 	s.index(ch)
-	s.saveLocked()
+	s.dirty = true
 	return ch, hostToken, guestToken, nil
 }
 
@@ -303,7 +318,7 @@ func (s *Store) Delete(id string, code int) bool {
 	conns := ch.conns
 	ch.conns = [2]*wsConn{}
 	s.drop(ch)
-	s.saveLocked()
+	s.dirty = true
 	s.mu.Unlock()
 	// Outside the lock: claiming a socket can wait on a write in progress.
 	// Their read loops cannot close them first, since nothing ends a read
@@ -332,7 +347,7 @@ func (s *Store) GC(now float64) int {
 		}
 	}
 	if gone > 0 {
-		s.saveLocked()
+		s.dirty = true
 	}
 	return gone
 }
@@ -347,7 +362,7 @@ func (s *Store) Engraft(ch *Channel, side int, conn *wsConn) (old *wsConn, other
 	ch.LastSeen = float64(time.Now().UnixNano()) / 1e9
 	other = ch.conns[1-side]
 	if side == guest && ch.markGuestSeen() {
-		s.saveLocked()
+		s.dirty = true
 	}
 	return old, other
 }
@@ -366,7 +381,7 @@ func (s *Store) Release(ch *Channel, side int, conn *wsConn) bool {
 	// A disconnect is worth persisting for the 30-day sweep, but not a file
 	// rewrite per reconnection: an hour of staleness cannot matter there.
 	if now-ch.savedAt > 3600 {
-		s.saveLocked()
+		s.dirty = true
 	}
 	return true
 }
