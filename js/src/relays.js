@@ -44,17 +44,61 @@ export function urlAllowed(url) {
   return first === 10 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168);
 }
 
+/**
+ * PROTOCOL.md §2.3 for the URL a host reaches a relay by for itself: wss
+ * anywhere, or ws only to loopback, a private literal address, or a plain name
+ * without dots (a container or compose service name).
+ */
+export function hostUrlAllowed(url) {
+  if (typeof url !== "string" || [...url].length > 2048) return false;
+  let parts;
+  try {
+    parts = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parts.username !== "" || parts.password !== "") return false;
+  if (parts.search !== "" || parts.hash !== "") return false;
+  if (parts.port !== "" && (Number(parts.port) < 1 || Number(parts.port) > 65535)) return false;
+  if (parts.protocol === "wss:") return true;
+  if (parts.protocol !== "ws:") return false;
+  const host = parts.hostname;
+  if (host === "") return false;
+  if (host.startsWith("[")) {
+    const text = host.slice(1, -1);
+    if (text.includes("%")) return false;
+    if (text === "::1") return true;
+    const first = text.split(":")[0] || "0";
+    return /^[0-9a-f]+$/.test(first) && ((Number.parseInt(first, 16) >> 8) & 0xfe) === 0xfc;
+  }
+  const quad = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (quad === null) return !host.includes(".");
+  const [first, second] = quad.slice(1).map(Number);
+  return (
+    first === 127 ||
+    first === 10 ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168)
+  );
+}
+
 /** A relay the host application uses, with the project key that creates channels. */
 export class Relay {
   /**
    * @param {string} url The guests' URL of the relay.
-   * @param {{ key: string }} options The project key that creates channels.
+   * @param {{ key: string, hostUrl?: string }} options The project key that
+   *   creates channels, and the URL the host itself uses (defaults to url).
    */
-  constructor(url, { key }) {
+  constructor(url, { key, hostUrl }) {
     if (!urlAllowed(url)) {
       throw new TypeError(`relay URL fails the policy of PROTOCOL.md §8.1: ${url}`);
     }
+    const ownUrl = hostUrl ?? url;
+    if (!hostUrlAllowed(ownUrl)) {
+      throw new TypeError(`host URL fails the policy of PROTOCOL.md §2.3: ${ownUrl}`);
+    }
     this.url = url;
+    this.hostUrl = ownUrl;
     this.key = key;
   }
 }
@@ -100,7 +144,7 @@ function httpBase(base) {
 
 /** POST /v1/channels with the relay's project key (PROTOCOL.md §2.3). */
 export async function createChannel(relay) {
-  const response = await request("POST", `${httpBase(relay.url)}/v1/channels`, relay.key);
+  const response = await request("POST", `${httpBase(relay.hostUrl)}/v1/channels`, relay.key);
   if (response.status !== 201) {
     throw new RelayError(`creating a channel failed with HTTP ${response.status}`);
   }

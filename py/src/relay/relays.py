@@ -50,15 +50,48 @@ def url_allowed(url: object) -> bool:
     return address in _PRIVATE_V6
 
 
+def host_url_allowed(url: object) -> bool:
+    """PROTOCOL.md §2.3 for the URL a host reaches a relay by for itself."""
+    if not isinstance(url, str) or len(url) > 2048:
+        return False
+    try:
+        parts = urlsplit(url)
+        host = parts.hostname
+        if not host or parts.username is not None or parts.password is not None:
+            return False
+        if parts.query or parts.fragment:
+            return False
+        if parts.port is not None and not 1 <= parts.port <= 65535:
+            return False
+        if parts.scheme == "wss":
+            return True
+        if parts.scheme != "ws" or "%" in host:
+            return False
+        try:
+            address = ip_address(host)
+        except ValueError:
+            # A dotless name is a container or compose service name, not a LAN host.
+            return "." not in host
+    except ValueError:
+        return False
+    if address.version == 4:
+        return address.is_loopback or any(address in network for network in _PRIVATE_V4)
+    return address.is_loopback or address in _PRIVATE_V6
+
+
 class Relay:
     """A relay the host application uses, with the project key that creates channels."""
 
-    __slots__ = ("key", "url")
+    __slots__ = ("host_url", "key", "url")
 
-    def __init__(self, url: str, *, key: str):
+    def __init__(self, url: str, *, key: str, host_url: str | None = None):
         if not url_allowed(url):
             raise ValueError(f"relay URL fails the policy of PROTOCOL.md §8.1: {url}")
+        own_url = url if host_url is None else host_url
+        if not host_url_allowed(own_url):
+            raise ValueError(f"host URL fails the policy of PROTOCOL.md §2.3: {own_url}")
         self.url = url
+        self.host_url = own_url
         self.key = key
 
 
@@ -109,7 +142,7 @@ def _http_base(base: str) -> str:
 async def create_channel(relay: Relay) -> Credentials:
     """POST /v1/channels with the relay's project key (PROTOCOL.md §2.3)."""
     status, body = await asyncio.to_thread(
-        _request, "POST", _http_base(relay.url) + "/v1/channels", relay.key, b""
+        _request, "POST", _http_base(relay.host_url) + "/v1/channels", relay.key, b""
     )
     if status != 201:
         raise RelayError(f"creating a channel failed with HTTP {status}")

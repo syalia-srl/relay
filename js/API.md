@@ -28,6 +28,14 @@ await host.revoke(device);
 await host.close();
 ```
 
+- `new Relay(url, { key, hostUrl })` takes an optional `hostUrl` for the host's own
+  use; it defaults to `url`. `url` is the guests' URL and keeps the section 8.1
+  policy. `hostUrl` follows section 2.3: `wss://` anywhere, or `ws://` only to
+  loopback, a private literal address, or a plain name without dots (a container or
+  compose service name). A `ws://` host URL across a shared LAN sends the project key
+  and host token in cleartext, so use one only on loopback or on a network whose only
+  members are the host and the relay (a container network); the library cannot check
+  that. Pairing payloads and `relays` messages carry `url` only.
 - `host.devices` lists bound devices; a device has `id`, `name` and `connected`.
 - `device.send` waits until the device is connected; pass `{ signal }` to give up:
   `device.send(bytes, { signal: AbortSignal.timeout(5000) })`.

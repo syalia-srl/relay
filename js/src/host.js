@@ -57,9 +57,10 @@ class Candidate {
 }
 
 class Channel {
-  constructor({ id, url, hostToken, guestToken, dev, pairing }) {
+  constructor({ id, url, hostUrl, hostToken, guestToken, dev, pairing }) {
     this.id = id;
     this.url = url;
+    this.hostUrl = hostUrl;
     this.hostToken = hostToken;
     this.guestToken = guestToken;
     this.dev = dev;
@@ -460,6 +461,7 @@ export class Host {
       const channel = new Channel({
         id: credentials.channel,
         url: relays[index].url,
+        hostUrl: relays[index].hostUrl,
         hostToken: credentials.hostToken,
         guestToken: credentials.guestToken,
         dev,
@@ -495,7 +497,7 @@ export class Host {
 
   async _deleteChannels(channels) {
     await Promise.allSettled(
-      channels.map((channel) => deleteChannel(channel.url, channel.id, channel.hostToken)),
+      channels.map((channel) => deleteChannel(channel.hostUrl, channel.id, channel.hostToken)),
     );
   }
 
@@ -539,7 +541,7 @@ export class Host {
         await sleep(paused, channel.stop.signal);
         continue;
       }
-      const socket = new Socket(channel.url, channel.id, channel.hostToken);
+      const socket = new Socket(channel.hostUrl, channel.id, channel.hostToken);
       channel.socket = socket;
       try {
         await withTimeout(socket.open(), SOCKET_TIMEOUT);
@@ -950,9 +952,12 @@ export class Host {
         const device = new Device(this, item.id, item.name, fromHex(item.guest));
         for (const stored of item.channels) {
           if (!urlAllowed(stored.url)) continue;
+          const hostUrl =
+            this._relays.find((relay) => relay.url === stored.url)?.hostUrl ?? stored.url;
           const channel = new Channel({
             id: stored.channel,
             url: stored.url,
+            hostUrl,
             hostToken: stored.host_token,
             guestToken: stored.guest_token,
             dev: device.id,

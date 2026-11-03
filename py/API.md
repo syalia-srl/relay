@@ -27,6 +27,14 @@ await host.revoke(device)                          # sends revoked, deletes chan
 await host.close()
 ```
 
+- `Relay(url, key=...)` takes an optional `host_url` for the host's own use; it
+  defaults to `url`. `url` is the guests' URL and keeps the section 8.1 policy.
+  `host_url` follows section 2.3: `wss://` anywhere, or `ws://` only to loopback, a
+  private literal address, or a plain name without dots (a container or compose
+  service name). A `ws://` host URL across a shared LAN sends the project key and
+  host token in cleartext, so use one only on loopback or on a network whose only
+  members are the host and the relay (a container network); the library cannot check
+  that. Pairing payloads and `relays` messages carry `url` only.
 - `Host` is an async context manager too: `async with await Host.open(...) as host:`.
 - `pairing.confirm(code)` is the only way to bind a key (section 5.5). A wrong code
   raises `WrongCode` with the tries left; the third, a collision, `exp` or the

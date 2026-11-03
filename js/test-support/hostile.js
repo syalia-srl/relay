@@ -20,6 +20,8 @@ export class HostileProxy {
     this._server = null;
     this._websocketServer = null;
     this._connections = new Set();
+    this.httpRequests = 0;
+    this.websockets = 0;
   }
 
   get url() {
@@ -52,6 +54,7 @@ export class HostileProxy {
   }
 
   _forward(request, response) {
+    this.httpRequests += 1;
     const upstream = http.request(
       this.httpTarget + request.url,
       { method: request.method, headers: { authorization: request.headers.authorization ?? "" } },
@@ -74,6 +77,7 @@ export class HostileProxy {
     const upstream = new WebSocket(this.target + request.url);
     this._connections.add(client);
     upstream.on("open", () => {
+      this.websockets += 1;
       this._connections.add(upstream);
       client.on("message", (data, isBinary) => this._pipe(client, upstream, "up", data, isBinary));
       upstream.on("message", (data, isBinary) => this._pipe(upstream, client, "down", data, isBinary));

@@ -34,6 +34,14 @@ for {
 err = host.Revoke(ctx, device)
 ```
 
+- A `relay.Relay` has an optional `HostURL` for the host's own use; it defaults to
+  `URL`. `URL` is the guests' URL and keeps the section 8.1 policy. `HostURL` follows
+  section 2.3: `wss://` anywhere, or `ws://` only to loopback, a private literal
+  address, or a plain name without dots (a container or compose service name). A
+  `ws://` host URL across a shared LAN sends the project key and host token in
+  cleartext, so use one only on loopback or on a network whose only members are the
+  host and the relay (a container network); the library cannot check that. Pairing
+  payloads and `relays` messages carry `URL` only.
 - `host.Devices()` lists bound devices; a `*Device` has `ID()`, `Name()` and
   `Connected()`.
 - `device.Send` waits until the device is connected or `ctx` ends.

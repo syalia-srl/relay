@@ -31,8 +31,76 @@ var httpClient = &http.Client{
 type Relay struct {
 	// URL is the guests' URL of the relay.
 	URL string
+	// HostURL is the URL the host itself reaches the relay by, or empty to use
+	// URL. It follows PROTOCOL.md section 2.3 rather than the guest policy.
+	HostURL string
 	// Key is the project key that creates channels.
 	Key string
+}
+
+// hostURL is where the host creates, deletes and opens its own channels.
+func (r Relay) hostURL() string {
+	if r.HostURL != "" {
+		return r.HostURL
+	}
+	return r.URL
+}
+
+// hostURLAllowed is PROTOCOL.md section 2.3 for the URL the host reaches a
+// relay by for itself: wss anywhere, or ws only to loopback, a private literal
+// address, or a plain name without dots (a container or compose service name).
+func hostURLAllowed(raw string) bool {
+	if utf8.RuneCountInString(raw) > 2048 {
+		return false
+	}
+	parts, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	if parts.Scheme != "wss" && parts.Scheme != "ws" {
+		return false
+	}
+	if parts.Host == "" || parts.User != nil || parts.RawQuery != "" || parts.Fragment != "" {
+		return false
+	}
+	host := parts.Hostname()
+	if host == "" {
+		return false
+	}
+	if port := parts.Port(); port != "" {
+		number, err := strconv.Atoi(port)
+		if err != nil || number < 1 || number > 65535 {
+			return false
+		}
+	}
+	if parts.Scheme == "wss" {
+		return true
+	}
+	if strings.ContainsRune(host, '%') {
+		return false
+	}
+	address := net.ParseIP(host)
+	if address == nil {
+		// A dotless name is a container or compose service name, not a LAN host.
+		return !strings.ContainsRune(host, '.')
+	}
+	if ipv4 := address.To4(); ipv4 != nil {
+		// An IPv4-mapped IPv6 address is not a literal IPv4 address.
+		if strings.ContainsRune(host, ':') {
+			return false
+		}
+		return ipv4[0] == 127 ||
+			ipv4[0] == 10 ||
+			(ipv4[0] == 172 && ipv4[1] >= 16 && ipv4[1] <= 31) ||
+			(ipv4[0] == 192 && ipv4[1] == 168)
+	}
+	if len(address) != net.IPv6len {
+		return false
+	}
+	if address.Equal(net.IPv6loopback) {
+		return true
+	}
+	return address[0]&0xfe == 0xfc
 }
 
 type credentials struct {
@@ -114,7 +182,7 @@ func httpURL(base, path string) (string, error) {
 // createChannel is POST /v1/channels with the relay's project key
 // (PROTOCOL.md section 2.3).
 func createChannel(ctx context.Context, relay Relay) (credentials, error) {
-	endpoint, err := httpURL(relay.URL, "/v1/channels")
+	endpoint, err := httpURL(relay.hostURL(), "/v1/channels")
 	if err != nil {
 		return credentials{}, err
 	}

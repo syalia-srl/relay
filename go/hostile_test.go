@@ -28,10 +28,12 @@ type hostileProxy struct {
 	server     *http.Server
 	url        string
 
-	mu       sync.Mutex
-	faults   map[string][]fault
-	held     map[string][]byte
-	upstream map[*websocket.Conn]*websocket.Conn
+	mu           sync.Mutex
+	faults       map[string][]fault
+	held         map[string][]byte
+	upstream     map[*websocket.Conn]*websocket.Conn
+	httpRequests int
+	websockets   int
 }
 
 func newHostileProxy(t *testing.T, address, target, httpTarget string) *hostileProxy {
@@ -75,12 +77,21 @@ func (p *hostileProxy) stop() {
 	}
 }
 
+func (p *hostileProxy) counts() (httpRequests, websockets int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.httpRequests, p.websockets
+}
+
 func (p *hostileProxy) handle(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Upgrade") != "" {
 		client, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
 		if err != nil {
 			return
 		}
+		p.mu.Lock()
+		p.websockets++
+		p.mu.Unlock()
 		client.SetReadLimit(-1)
 		upstream, _, err := websocket.Dial(r.Context(), p.target+r.URL.RequestURI(), nil)
 		if err != nil {
@@ -109,6 +120,9 @@ func (p *hostileProxy) handle(w http.ResponseWriter, r *http.Request) {
 		upstream.CloseNow()
 		return
 	}
+	p.mu.Lock()
+	p.httpRequests++
+	p.mu.Unlock()
 	request, err := http.NewRequestWithContext(r.Context(), r.Method, p.httpTarget+r.URL.RequestURI(), r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)

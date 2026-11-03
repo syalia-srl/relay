@@ -32,6 +32,8 @@ class HostileProxy:
         self._faults: dict[str, deque[tuple[str, float]]] = {"up": deque(), "down": deque()}
         self._server = None
         self._connections: set[object] = set()
+        self.http_requests = 0
+        self.websockets = 0
 
     @property
     def url(self) -> str:
@@ -56,6 +58,7 @@ class HostileProxy:
     async def _process_request(self, connection, request: Request) -> Response | None:
         if request.headers.get("Upgrade", "").lower() == "websocket":
             return None
+        self.http_requests += 1
         status, body = await asyncio.to_thread(
             _forward, request.method, self.http_target + request.path, request.headers
         )
@@ -66,6 +69,7 @@ class HostileProxy:
         pipes: list[asyncio.Task] = []
         try:
             upstream = await connect(self.target + websocket.request.path, max_size=None)
+            self.websockets += 1
             self._connections.update((websocket, upstream))
             pipes = [
                 asyncio.create_task(self._pipe(websocket, upstream, "up")),
