@@ -1,0 +1,34 @@
+# /etc/systemd/system/relay.service
+[Unit]
+Description=relay — E2E message relay
+After=network.target
+
+[Service]
+Type=simple
+User=relay
+Group=relay
+ExecStart=/srv/relay/relay
+Environment=RELAY_ADDR=127.0.0.1:8010
+# The Python service's state directory, so phones paired before the switch keep
+# working: outside the binary's directory, owned by the service user, 0700.
+Environment=RELAY_STATE_PATH=/srv/inbox-relay-data/channels.json
+Environment=RELAY_KEYS_PATH=/srv/relay-config/keys.json
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/srv/inbox-relay-data
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+CapabilityBoundingSet=
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=multi-user.target
