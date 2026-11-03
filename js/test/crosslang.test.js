@@ -38,6 +38,8 @@ function startPartner(...args) {
     errors += chunk;
   });
   const exited = new Promise((resolve) => child.once("exit", resolve));
+  child.stdin.on("error", () => {});
+  let stopping = null;
   return {
     send(command) {
       child.stdin.write(`${JSON.stringify(command)}\n`);
@@ -57,10 +59,13 @@ function startPartner(...args) {
       }
     },
     async stop() {
-      this.send({ stop: true });
-      const timer = setTimeout(() => child.kill("SIGKILL"), 20_000);
-      await exited;
-      clearTimeout(timer);
+      stopping ??= (async () => {
+        child.stdin.write(`${JSON.stringify({ stop: true })}\n`);
+        const timer = setTimeout(() => child.kill("SIGKILL"), 20_000);
+        await exited;
+        clearTimeout(timer);
+      })();
+      await stopping;
     },
   };
 }

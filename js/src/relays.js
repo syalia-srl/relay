@@ -27,7 +27,7 @@ export function urlAllowed(url) {
   const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i.exec(url)[1];
   const rawHost = authority.startsWith("[")
     ? authority.slice(0, authority.indexOf("]") + 1)
-    : authority.replace(/:\d+$/, "");
+    : authority.replace(/:\d*$/, "");
   // §8.1 wants a literal address. WHATWG URL would also accept legacy forms
   // such as ws://10.1, which mean the same address but are not literals.
   if (rawHost.toLowerCase() !== parts.hostname) return false;
