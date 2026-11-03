@@ -198,11 +198,14 @@ async def test_a_late_auth_is_4401(relay):
 
 async def test_a_malformed_auth_is_4401(relay):
     channel = relay.channel_v1()
+    token = channel["host_token"].encode()
     for first in (
         b"not json at all",
         b'{"auth": 5}',
         b'{"no_auth": true}',
-        b'{"auth": "' + channel["host_token"].encode() + b'"} trailing',
+        b'{"auth": "' + token + b'"} trailing',
+        b'{"auth": "' + token + b'", "auth": "' + token + b'"}',
+        b'{"Auth": "' + token + b'"}',
     ):
         async with v1_socket(relay, channel["channel"]) as websocket:
             await websocket.send(first.decode())

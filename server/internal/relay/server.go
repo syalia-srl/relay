@@ -246,15 +246,23 @@ func (s *Server) wsV1(w http.ResponseWriter, r *http.Request) {
 		ws.close(codeAuth, "auth")
 		return
 	}
-	var auth struct {
-		Auth string `json:"auth"`
+	value, err := decodeStrictJSON(data)
+	if err != nil {
+		ws.close(codeAuth, "auth")
+		return
 	}
-	if json.Unmarshal(data, &auth) != nil || auth.Auth == "" {
+	obj, ok := value.(map[string]any)
+	if !ok {
+		ws.close(codeAuth, "auth")
+		return
+	}
+	auth, ok := obj["auth"].(string)
+	if !ok || auth == "" {
 		ws.close(codeAuth, "auth")
 		return
 	}
 
-	ch, side, ok := s.store.ByToken(sha256.Sum256([]byte(auth.Auth)))
+	ch, side, ok := s.store.ByToken(sha256.Sum256([]byte(auth)))
 	if !ok || ch.V != 1 || ch.ID != id {
 		ws.close(codeAuth, "auth")
 		return
