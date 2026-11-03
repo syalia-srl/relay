@@ -4,12 +4,24 @@ on:
     branches: [main]
   pull_request:
 jobs:
-  pytest:
+  go:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - run: go vet ./...
+        working-directory: server
+      - run: go test ./...
+        working-directory: server
+      - run: CGO_ENABLED=0 go build -o relay ./cmd/relay
+        working-directory: server
       - uses: astral-sh/setup-uv@v5
-      - run: uv run --python 3.12 pytest -q
+      - run: uv run --python 3.12 --group conformance pytest conformance -q
+        env:
+          RELAY_BIN: ${{ github.workspace }}/server/relay
   vectors:
     runs-on: ubuntu-latest
     steps:
