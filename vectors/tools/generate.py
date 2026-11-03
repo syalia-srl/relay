@@ -389,9 +389,10 @@ def pairing_vectors() -> dict:
     good["confirmed_before_frame"] = 2
     return {
         "description": "PROTOCOL.md 5: a pairing with Noise_IKpsk1. The guest sends `frame1`, the host answers "
-                       "`frame2`, both derive `pairing_code`, then the transport frames follow in order. The person "
-                       "types the code into the host between transport frames 1 and 2 "
-                       "(`confirmed_before_frame`); `relays` is never sent before that. "
+                       "`frame2`, both derive `pairing_code`, then the transport frames follow in order. The guest shows "
+                       "the code after the `pong` (transport index 1); the person types it into the host before "
+                       "the transport frame at 0-based index `confirmed_before_frame`, the first one a host may "
+                       "send only after confirmation (`relays`). "
                        "Frames are whole L0 data frames (0x01, then the L1 type byte). `refused` lists first "
                        "messages the host must fail to read.",
         "cases": [good],
@@ -505,6 +506,9 @@ def relay_token_vectors() -> dict:
         ("negative channels", token({**claims, "channels": -1}), False),
         ("bytes_per_day as a float", token({**claims, "bytes_per_day": 1.5e8}), False),
         ("empty sub", token({**claims, "sub": ""}), False),
+        ("sub of 128 characters", token({**claims, "sub": "s" * 128}), True),
+        ("empty iss", token({**claims, "iss": ""}), False),
+        ("aud of 65 characters", token({**claims, "aud": "a" * 65}), False),
         ("sub of 129 characters", token({**claims, "sub": "s" * 129}), False),
         ("a duplicate key", token(None, raw=json.dumps(claims, separators=(",", ":"))[:-1].encode()
                                   + b',"channels":9999}'), False),

@@ -67,7 +67,7 @@ A key is one of two kinds:
   | Field | Type | Meaning |
   |---|---|---|
   | `iss` | string, 1 to 64 | Issuer id. The relay looks up the issuer's Ed25519 public key by it. |
-  | `aud` | string, 1 to 64 | The relay this token is for: the operator's id for itself. |
+  | `aud` | string, 1 to 64 | The relay this token is for. Each relay has its own id, unique among the relays that trust the issuer; the operator assigns it and tells the issuer. Two relays MUST NOT share an id. |
   | `sub` | string, 1 to 128 | An opaque id for the holder. It MUST NOT name the holder. |
   | `exp` | integer | Expiry, Unix seconds. The token is valid while `now < exp`. |
   | `channels`, `creates_per_minute`, `bytes_per_day` | integers | The quota. |
@@ -105,10 +105,13 @@ The relay checks in that order: the key first, then its quota, then its capacity
 sockets of the channel with code 4410 and forgets it. Answers 204 when deleted, 404
 for an unknown channel or a wrong token alike. Only the host can delete a channel.
 
-The host token authenticates the host's socket and also deletes the channel. A host
-MUST NOT send it over a `ws://` or `http://` connection that crosses a network other
-machines share; over plain text it may only reach a relay on its own machine or on a
-network only it and the relay are on (a container network).
+The host token authenticates the host's socket and also deletes the channel, and the
+project key creates channels. A host MUST NOT send either over a `ws://` or `http://`
+connection that crosses a network other machines share; over plain text it may only
+reach a relay on its own machine (loopback) or on a network that only it and the
+relay are members of (a container network). A host MAY reach a relay by a different
+URL than the one it gives guests, for this reason: the URL in a relay entry is the
+guests' URL.
 
 ### 2.4 WebSocket
 
@@ -213,8 +216,8 @@ where `dev` is the device id from the pairing payload and `channel` the channel 
 the handshake runs on, both as the ASCII text of section 2.1 and 4, and `u16` is a
 2-byte big-endian length. A session is bound to that channel id: a relay cannot move
 it to another channel. Channel ids are chosen by relays, so the prologue does not by
-itself tell two relays apart; a host MUST treat a channel id that one of its other
-relays already returned to it as a failed creation.
+itself tell two relays apart; a host MUST treat a channel id equal to any channel id
+it already holds, on any relay, as a failed creation.
 
 ### 3.2 L1 frames
 
@@ -303,18 +306,24 @@ section 5.4), or if 4 keys are already pending. Otherwise it holds the result as
 channel's candidate and answers with `accept`.
 
 The guest, on `accept`, finishes the handshake, derives the pairing code (section
-5.6) and shows it, then sends a `ping` (section 9.1) as its first transport frame.
+5.6), and sends a `ping` (section 9.1) as its first transport frame. It shows the
+code only when the `pong` arrives, since the host sends that only after it promoted
+the key, so a code the person types is never one the host does not yet hold.
 
 The host promotes the candidate when a transport frame decrypts under it (section
-6.3): its guest key becomes pending with its code. A relay that replays a recorded
-`pair` gets an `accept` it cannot use, because it cannot produce the transport frame
-that follows.
+6.3): its guest key becomes pending with its code. A key has at most one pending
+entry and one code, the one from its first promoted `pair`; a later `pair` candidate
+for a key already pending is aborted when it would be promoted. A guest sends `pair`
+once per pairing and uses `connect` for every later socket, on any of the pairing
+channels. A relay that replays a recorded `pair` gets an `accept` it cannot use,
+because it cannot produce the transport frame that follows.
 
 ### 5.4 While keys are pending
 
 - The host accepts `connect` frames on its pairing channels from a pending key only
-  (after confirmation, from the bound key only), so a guest that lost its socket
-  reconnects with KK (section 6) and keeps its code.
+  (after confirmation, from the bound key only), so a guest that lost its socket or
+  moved to another relay reconnects with KK (section 6). Promoting such a candidate
+  adds no pending entry and leaves the key's code as it was.
 - The host answers `ping` and aborts on any application message or any control
   message other than `ping`, `pong` and `close`. It sends no `relays` and gives a
   pending guest no access of any kind.
@@ -331,21 +340,24 @@ that match no pending key, the host ends the pairing.
 Someone who photographed the payload can race the real guest and hold pending keys
 of their own, but their codes are unknown to the person, so the typed code binds the
 real guest. With at most 3 stranger keys pending, the chance that a stranger's code
-equals the real one is below 3 in a million.
+equals the real one is below 3 in a million, and then the host binds neither and
+the person starts over.
 
 A pairing ends:
 
 - **bound**, on confirmation. The host binds the key to `dev`, erases the `psk`,
-  forgets the other pending keys and candidates (aborting their sessions), creates one
-  fresh device channel per relay, and sends `relays` with them in the bound key's
-  pairing session (now, or when that guest next connects on a pairing channel). The
-  host deletes the pairing channels when the guest's first transport frame decrypts
-  on a device channel, or 2 minutes after confirmation, whichever comes first. Until
-  then the payload's guest tokens still open a socket on a pairing channel, which
-  gives a stranger nothing but the chance to displace the real guest there (4409).
-- **ended**, 2 minutes after the first key became pending without a confirmation, at
-  `exp` with no confirmation, on a `close` from a pending key, or as said above. The
-  host deletes the pairing channels and forgets the pairing.
+  forgets the other pending keys and candidates (aborting their sessions), and creates
+  one fresh device channel per relay. It sends `relays` with them on the bound key's
+  current pairing session if there is one, and otherwise right after promoting the
+  bound key's next `connect` on a pairing channel. The host deletes the pairing
+  channels when a candidate of the bound key is promoted on a device channel. If that
+  has not happened 10 minutes after confirmation, the guest never received its
+  channels: the host unbinds the key, deletes the device channels and the pairing
+  channels, and the pairing has failed. Until the pairing channels are deleted, the
+  payload's guest tokens still open a socket on them, which gives a stranger nothing
+  but the chance to displace the real guest there (4409).
+- **ended**, at `exp` with no confirmation, on a `close` from a pending key, or as
+  said above. The host deletes the pairing channels and forgets the pairing.
 
 ### 5.6 The pairing code
 
@@ -475,8 +487,10 @@ A guest holds an ordered list of relays per host. It:
    success.
 
 The host keeps a socket on its side of every channel it holds, on every relay. When
-one closes for any reason other than 4401 or 4410, it reconnects with the same
-backoff.
+one closes without a code in the 4400 to 4499 range, or with 4429, it reconnects with
+the same backoff. On 4401 or 4410 it stops using the channel (section 8.4); on 4409
+another socket of its own holds the side, and it keeps that one; on 4400 or 4413 it
+stops using the relay and reports a fault.
 
 ### 8.3 The list
 
@@ -486,8 +500,8 @@ relay, a presence event, another pairing payload.
 
 The guest applies a `relays` message as a whole: it filters the entries through the
 URL policy and, if any remain, replaces its list with them and starts over at step 1
-of section 8.2. The host keeps the channels it took out of the list until a handshake
-from the guest completes on a channel of the new list, then deletes them.
+of section 8.2. The host keeps the channels it took out of the list until it promotes a candidate
+from the guest on a channel of the new list, then deletes them.
 
 ### 8.4 A channel that is gone
 
@@ -515,8 +529,7 @@ ignored.
 
 A guest that sends `close` keeps its key and its list until it receives `closed`,
 sends `close` again as the first message after `ping` on every connection until then,
-and treats a pairing that is gone (section 8.4) as closed. A host that receives
-`close` for a device it already unbound answers `closed`.
+and treats a pairing that is gone (section 8.4) as closed.
 
 A receiver ignores an `op` it does not know, and aborts on a message that is not a
 JSON object, has no string `op`, or carries a known `op` from the wrong side, with a
@@ -531,8 +544,9 @@ message (section 6.3). A guest that receives `abort` discards its session and go
 back to step 1 of section 8.2; a host that receives one discards the channel's
 candidate and current session, and the guest reconnects. `abort` is not
 authenticated, so a relay can forge it. That ends a connection, which a relay can
-already do by closing the socket or dropping one frame; it cannot change a pairing or
-a binding.
+already do by closing the socket or dropping one frame. A relay can thereby make a
+pairing fail, by keeping the guest from getting through, but it cannot make the host
+bind any key other than the one whose code the person typed.
 
 ## 10. What the host application must do
 
@@ -547,7 +561,8 @@ it meets them. `SECURITY.md` says how AInBox does.
 2. **The host key at rest.** `hs` MUST be stored where only the host process can read
    it.
 3. **The confirmation.** The application MUST take the typed code only from the
-   person entitled to pair, and MUST NOT show pending codes (section 5.5).
+   person entitled to pair, over a connection as confidential as the rest of its
+   administration, and MUST NOT show pending codes (section 5.5).
 4. **What a session may do.** L1 says who is on the other end, not what they may
    ask. The application's L2 decides what a bound guest can reach.
 5. **Revocation.** Revoking a device MUST send `revoked`, delete its channels on every
