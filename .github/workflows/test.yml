@@ -112,3 +112,26 @@ jobs:
         env:
           RELAY_BIN: ${{ github.workspace }}/server/relay
           RELAY_TEST_ADDR: 10.255.0.1
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - run: CGO_ENABLED=0 go build -o relay ./cmd/relay
+        working-directory: server
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: astral-sh/setup-uv@v5
+      - name: give the examples a private address for ws:// (PROTOCOL.md 8.1)
+        run: sudo ip addr add 10.255.0.1/32 dev lo
+      - name: run the three worked examples against the built relay
+        run: uv run --python 3.12 python docs/tools/run_examples.py
+        env:
+          RELAY_BIN: ${{ github.workspace }}/server/relay
+          RELAY_TEST_ADDR: 10.255.0.1
+      - name: build the site and check its internal links
+        run: uv run --python 3.12 --group docs python docs/tools/build.py

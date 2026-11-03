@@ -95,3 +95,25 @@ Change a vector only by changing the generator, then regenerate:
 CI runs `generate.py --check`, which fails when a file in `vectors/` differs from what
 the generator writes. The design behind it is
 `docs/2026-11-03-relay-and-channel-protocol-design.html` in `syalia-srl/ainbox`.
+
+## Docs
+
+The documentation site is agent-first, human on top. A person usually arrives through
+an agent, so `docs/_site/llms.txt` indexes every page with one factual sentence, and
+every HTML page has a Markdown twin at the same URL with `.md` instead of `.html`.
+Text addressed to agents is descriptive: it states what exists and what each step
+does, never what the reader or an agent should do.
+
+`docs/src/*.md` is the source. `docs/tools/build.py` renders those files,
+`PROTOCOL.md` and `SECURITY.md` into `docs/_site/` (gitignored), writes the twins,
+`llms.txt` and the landing's `index.md`, copies `docs/index.html`, `docs/CNAME` and
+`docs/favicon.svg`, and fails on a broken internal link. Generated HTML is never
+edited by hand. `docs/index.html` is the hand-kept landing page.
+
+    uv run --group docs python docs/tools/build.py
+
+The worked examples in `py/examples/`, `js/examples/` and `go/examples/` are real
+programs, included into the guides by the build script. The `docs` job in
+`.github/workflows/test.yml` runs all three against the built relay and then builds
+the site, so the guides cannot drift from the code. `pages.yml` publishes `docs/_site`
+to GitHub Pages on `workflow_dispatch` while the repository is private.

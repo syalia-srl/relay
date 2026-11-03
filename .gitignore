@@ -10,3 +10,6 @@ dist/
 
 # The JavaScript dev dependency (the hostile-relay proxy).
 /js/node_modules/
+
+# The generated documentation site.
+/docs/_site/
