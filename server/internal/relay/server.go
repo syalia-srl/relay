@@ -442,20 +442,27 @@ func (w *wsConn) write(data []byte) error {
 	return w.conn.Write(ctx, websocket.MessageBinary, data)
 }
 
+// maxQueued bounds what a socket can receive before its ready frame has gone
+// out. It is a few frames wide: the window opens and closes in one handler.
+const maxQueued = 64
+
 func (w *wsConn) sendSystem(event string) {
-	frame := systemFrames[event]
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.closed {
 		return
 	}
 	if !w.ready {
-		if len(w.queue) < 8 {
-			w.queue = append(w.queue, frame)
-		}
+		w.enqueue(systemFrames[event])
 		return
 	}
-	w.write(frame)
+	w.write(systemFrames[event])
+}
+
+func (w *wsConn) enqueue(frame []byte) {
+	if len(w.queue) < maxQueued {
+		w.queue = append(w.queue, frame)
+	}
 }
 
 func (w *wsConn) sendReady() {
@@ -477,6 +484,13 @@ func (w *wsConn) send(data []byte) error {
 	defer w.mu.Unlock()
 	if w.closed {
 		return errors.New("closed")
+	}
+	if !w.ready {
+		// A frame can arrive from the other side between this socket taking
+		// its slot and its ready frame leaving; hold it so ready still goes
+		// first, in order.
+		w.enqueue(data)
+		return nil
 	}
 	return w.write(data)
 }

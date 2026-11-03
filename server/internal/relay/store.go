@@ -52,7 +52,8 @@ type Channel struct {
 	LimitCreates  int64 `json:"limit_creates,omitempty"`
 	LimitBytes    int64 `json:"limit_bytes,omitempty"`
 
-	conns [2]*wsConn
+	conns   [2]*wsConn
+	savedAt float64 // when this row last reached disk, to keep saves rare
 }
 
 func (ch *Channel) hash(side int) string {
@@ -195,7 +196,9 @@ func (s *Store) saveLocked() {
 		return
 	}
 	rows := make([]Channel, 0, len(s.channels))
+	now := float64(time.Now().Unix())
 	for _, ch := range s.channels {
+		ch.savedAt = now
 		row := *ch
 		row.conns = [2]*wsConn{}
 		rows = append(rows, row)
@@ -385,8 +388,13 @@ func (s *Store) Release(ch *Channel, side int, conn *wsConn) bool {
 		return false
 	}
 	ch.conns[side] = nil
-	ch.LastSeen = float64(time.Now().UnixNano()) / 1e9
-	s.saveLocked()
+	now := float64(time.Now().UnixNano()) / 1e9
+	ch.LastSeen = now
+	// A disconnect is worth persisting for the 30-day sweep, but not a file
+	// rewrite per reconnection: an hour of staleness cannot matter there.
+	if now-ch.savedAt > 3600 {
+		s.saveLocked()
+	}
 	return true
 }
 
