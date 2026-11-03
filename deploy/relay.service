@@ -25,6 +25,12 @@ ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
 RestrictAddressFamilies=AF_INET AF_INET6
 CapabilityBoundingSet=
 LockPersonality=yes
@@ -32,6 +38,12 @@ MemoryDenyWriteExecute=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+UMask=0077
+# The relay only listens on loopback and makes no outbound connection.
+IPAddressDeny=any
+IPAddressAllow=localhost
 
 [Install]
 WantedBy=multi-user.target
