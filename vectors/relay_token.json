@@ -18,6 +18,26 @@
       "valid": true
     },
     {
+      "name": "payload with base64 padding",
+      "token": "rt1.eyJpc3MiOiJzeWFsaWEiLCJhdWQiOiJyZWxheS5leGFtcGxlIiwic3ViIjoiaV83ZjNhOWMiLCJleHAiOjE4MDAwODY0MDAsImNoYW5uZWxzIjo2NCwiY3JlYXRlc19wZXJfbWludXRlIjoxMCwiYnl0ZXNfcGVyX2RheSI6MjAwMDAwMDAwfQ=.jfpmYk7k64WWhpfjCuDO9yIPjUR0IXSLT0wapiYAEpYZb9_JjvVqhZcElRjXBkhmFE02yLa67D-gr1e_2A4XBw",
+      "valid": false
+    },
+    {
+      "name": "signature with base64 padding",
+      "token": "rt1.eyJpc3MiOiJzeWFsaWEiLCJhdWQiOiJyZWxheS5leGFtcGxlIiwic3ViIjoiaV83ZjNhOWMiLCJleHAiOjE4MDAwODY0MDAsImNoYW5uZWxzIjo2NCwiY3JlYXRlc19wZXJfbWludXRlIjoxMCwiYnl0ZXNfcGVyX2RheSI6MjAwMDAwMDAwfQ.jfpmYk7k64WWhpfjCuDO9yIPjUR0IXSLT0wapiYAEpYZb9_JjvVqhZcElRjXBkhmFE02yLa67D-gr1e_2A4XBw=",
+      "valid": false
+    },
+    {
+      "name": "signature with non-canonical trailing bits",
+      "token": "rt1.eyJpc3MiOiJzeWFsaWEiLCJhdWQiOiJyZWxheS5leGFtcGxlIiwic3ViIjoiaV83ZjNhOWMiLCJleHAiOjE4MDAwODY0MDAsImNoYW5uZWxzIjo2NCwiY3JlYXRlc19wZXJfbWludXRlIjoxMCwiYnl0ZXNfcGVyX2RheSI6MjAwMDAwMDAwfQ.jfpmYk7k64WWhpfjCuDO9yIPjUR0IXSLT0wapiYAEpYZb9_JjvVqhZcElRjXBkhmFE02yLa67D-gr1e_2A4XBx",
+      "valid": false
+    },
+    {
+      "name": "payload with non-canonical trailing bits",
+      "token": "rt1.eyJpc3MiOiJzeWFsaWEiLCJhdWQiOiJyZWxheS5leGFtcGxlIiwic3ViIjoiaV83ZjNhOWMiLCJleHAiOjE4MDAwODY0MDAsImNoYW5uZWxzIjo2NCwiY3JlYXRlc19wZXJfbWludXRlIjoxMCwiYnl0ZXNfcGVyX2RheSI6MjAwMDAwMDAwfSB.0WERdJLxndYXyMXYrj9yphihYypNi0kFqMq3UqbeJcohe2p90A3Tlvdutamm4ve9PSuBSBsVNaJIak8ahFohAA",
+      "valid": false
+    },
+    {
       "name": "signed by another key",
       "token": "rt1.eyJpc3MiOiJzeWFsaWEiLCJhdWQiOiJyZWxheS5leGFtcGxlIiwic3ViIjoiaV83ZjNhOWMiLCJleHAiOjE4MDAwODY0MDAsImNoYW5uZWxzIjo2NCwiY3JlYXRlc19wZXJfbWludXRlIjoxMCwiYnl0ZXNfcGVyX2RheSI6MjAwMDAwMDAwfQ.MEzZATn2opn_WF4yT3xT0f-q_lfFGBoUN2LA3V66y7-7Z9BYhH8DMuFgzR_IhOxKYiI41pjtgYxjAwBv7fKOBg",
       "valid": false
