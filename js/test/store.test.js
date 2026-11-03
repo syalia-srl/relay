@@ -37,6 +37,7 @@ test("fileStore replaces its file atomically at mode 0600", async () => {
     await store.save({ v: 1, static: "00" });
     assert.deepEqual(await store.load(), { v: 1, static: "00" });
     assert.equal(statSync(path).mode & 0o777, 0o600);
+    assert.equal(statSync(join(directory, "state")).mode & 0o777, 0o700);
 
     await store.save({ v: 1, static: "11" });
     assert.deepEqual(await store.load(), { v: 1, static: "11" });

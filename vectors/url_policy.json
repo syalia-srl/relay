@@ -82,6 +82,14 @@
       "allowed": false
     },
     {
+      "url": "ws:10.0.0.1",
+      "allowed": false
+    },
+    {
+      "url": "ws:/10.0.0.1",
+      "allowed": false
+    },
+    {
       "url": "http://192.168.1.10",
       "allowed": false
     },

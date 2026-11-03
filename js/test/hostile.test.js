@@ -12,7 +12,7 @@ import { HostileProxy } from "../test-support/hostile.js";
 import { GuestInbox, HostInbox, sendUntil, unpairAll, waitUntil } from "../test-support/inbox.js";
 import { OPERATOR_KEY, startRelay } from "../test-support/relay.js";
 
-const FAULTS = ["drop", "duplicate", "reorder", "delay", "relabel", "flip"];
+const FAULTS = ["drop", "duplicate", "reorder", "delay", "relabel", "flip", "oversize"];
 
 for (const action of FAULTS) {
   test(`hostile relay: ${action}`, async () => {
@@ -40,16 +40,29 @@ for (const action of FAULTS) {
       await device.send(encoder.encode("sync"));
       await waitUntil(() => replies.has(encoder.encode("sync")));
 
-      proxy.arm("up", action);
-      proxy.arm("down", action);
-      for (const [send, message] of [
-        [(value) => link.send(value), encoder.encode("one")],
-        [(value) => device.send(value), encoder.encode("two")],
-      ]) {
+      if (action === "oversize") {
+        // Only the host's socket gets the oversized frame: the guest sends next,
+        // so the damaged down frame is the one the host reads.
+        const sockets = proxy.websockets;
+        proxy.arm("down", action);
         try {
-          await send(message);
+          await link.send(encoder.encode("one"));
         } catch (error) {
           if (!(error instanceof RelayError)) throw error;
+        }
+        await waitUntil(() => proxy.websockets > sockets, 30_000);
+      } else {
+        proxy.arm("up", action);
+        proxy.arm("down", action);
+        for (const [send, message] of [
+          [(value) => link.send(value), encoder.encode("one")],
+          [(value) => device.send(value), encoder.encode("two")],
+        ]) {
+          try {
+            await send(message);
+          } catch (error) {
+            if (!(error instanceof RelayError)) throw error;
+          }
         }
       }
       await sendUntil(

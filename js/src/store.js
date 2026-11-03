@@ -31,6 +31,7 @@ export function fileStore(path) {
         throw new RelayError(`cannot read the state file: ${error.message}`);
       }
       try {
+        // The state is a trusted local file, so this lenient parser is fine here; never use it on network input.
         return JSON.parse(text);
       } catch {
         throw new RelayError("the state file is not JSON");
@@ -43,7 +44,7 @@ export function fileStore(path) {
       const directory = dirname(path);
       let temporary = null;
       try {
-        await mkdir(directory, { recursive: true });
+        await mkdir(directory, { recursive: true, mode: 0o700 });
         temporary = join(
           directory,
           `.${basename(path)}.${crypto.randomUUID()}.tmp`,
@@ -81,6 +82,7 @@ export function webStore(name) {
       const text = globalThis.localStorage.getItem(name);
       if (text === null) return null;
       try {
+        // Trusted local state, not network input; the lenient parser is fine here.
         return JSON.parse(text);
       } catch {
         throw new RelayError("the state is not JSON");

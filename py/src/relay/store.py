@@ -22,6 +22,7 @@ def load(path: Path) -> dict[str, Any] | None:
     except OSError as error:
         raise RelayError(f"cannot read the state file: {error}") from error
     try:
+        # The state is a trusted local file, so this lenient parser is fine here; never use it on network input.
         value = json.loads(text)
     except ValueError as error:
         raise RelayError("the state file is not JSON") from error
@@ -38,7 +39,7 @@ def save(path: Path, value: dict[str, Any]) -> None:
     """
     directory = path.parent
     try:
-        directory.mkdir(parents=True, exist_ok=True)
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         descriptor, name = tempfile.mkstemp(dir=directory, prefix=f".{path.name}.", suffix=".tmp")
     except OSError as error:
         raise RelayError(f"cannot write the state file: {error}") from error

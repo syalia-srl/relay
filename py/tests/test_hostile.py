@@ -12,7 +12,7 @@ from relay import Guest, Host, Relay, RelayError
 from relayfixture import OPERATOR_KEY
 from support import GuestInbox, HostInbox, send_until, unpair_all, wait_until
 
-FAULTS = ["drop", "duplicate", "reorder", "delay", "relabel", "flip"]
+FAULTS = ["drop", "duplicate", "reorder", "delay", "relabel", "flip", "oversize"]
 
 
 @pytest.mark.parametrize("action", FAULTS)
@@ -36,13 +36,24 @@ async def test_hostile_relay(relay, tmp_path: Path, action: str) -> None:
             await device.send(b"sync")
             await wait_until(lambda: replies.has(b"sync"))
 
-            proxy.arm("up", action)
-            proxy.arm("down", action)
-            for send, message in ((link.send, b"one"), (device.send, b"two")):
+            if action == "oversize":
+                # Only the host's socket gets the oversized frame: the guest sends
+                # next, so the damaged down frame is the one the host reads.
+                sockets = proxy.websockets
+                proxy.arm("down", action)
                 try:
-                    await send(message)
+                    await link.send(b"one")
                 except RelayError:
                     pass
+                await wait_until(lambda: proxy.websockets > sockets, 30)
+            else:
+                proxy.arm("up", action)
+                proxy.arm("down", action)
+                for send, message in ((link.send, b"one"), (device.send, b"two")):
+                    try:
+                        await send(message)
+                    except RelayError:
+                        pass
             await send_until(link.send, b"after", lambda: received.has(b"after"), 30)
             await send_until(device.send, b"after", lambda: replies.has(b"after"), 30)
 
