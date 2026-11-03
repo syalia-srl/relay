@@ -9,16 +9,16 @@ User=relay
 Group=relay
 ExecStart=/srv/relay/relay
 Environment=RELAY_ADDR=127.0.0.1:8010
-# The Python service's state directory, so phones paired before the switch keep
-# working: outside the binary's directory, owned by the service user, 0700.
-Environment=RELAY_STATE_PATH=/srv/inbox-relay-data/channels.json
-Environment=RELAY_KEYS_PATH=/srv/relay-config/keys.json
+# systemd creates /var/lib/relay owned by the service user, 0700.
+StateDirectory=relay
+StateDirectoryMode=0700
+Environment=RELAY_STATE_PATH=/var/lib/relay/channels.json
+Environment=RELAY_KEYS_PATH=/etc/relay/keys.json
 Restart=on-failure
 RestartSec=5
 
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=/srv/inbox-relay-data
 ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
