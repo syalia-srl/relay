@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>Relay — SYALIA</title>
+<meta name="description" content="An end-to-end encrypted channel between an app and the server it belongs to, through relays that cannot read it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink-100:#e9ecf5; --ink-200:#cfd5e6; --ink-300:#a3aece; --ink-400:#6e7ba0; --ink-500:#475070;
+  --ink-600:#2e3450; --ink-700:#1c2138; --ink-800:#11152a; --ink-900:#0a0d1f; --ink-950:#05071a;
+  --syalia-300:#86b3da; --syalia-400:#5b8fc4; --syalia-700:#3d6584;
+  --accent-300:#fcd34d; --accent-400:#fbbf24;
+  --relay:#22d3ee; --relay-soft:rgba(34,211,238,.12); --relay-line:rgba(34,211,238,.32);
+  --line:rgba(255,255,255,.06);
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { margin:0; font-family:'Inter',system-ui,sans-serif; background:var(--ink-950); color:var(--ink-100);
+  -webkit-font-smoothing:antialiased; line-height:1.6; }
+html[data-lang="en"] [lang="es"], html[data-lang="es"] [lang="en"] { display:none !important; }
+a { color:var(--relay); text-decoration:none; }
+a:hover { text-decoration:underline; }
+code, pre { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:.88em; }
+code { background:var(--ink-800); border:1px solid var(--line); border-radius:6px; padding:.1em .4em; color:var(--ink-200); }
+p code, li code, td code { overflow-wrap:anywhere; }
+pre { background:var(--ink-900); border:1px solid var(--line); border-radius:14px; padding:18px 20px; overflow-x:auto;
+  color:var(--ink-200); line-height:1.55; margin:0; }
+pre code { background:none; border:0; padding:0; }
+pre .c { color:var(--ink-400); }
+.display { font-family:'Space Grotesk',system-ui,sans-serif; letter-spacing:-.02em; }
+.wrap { max-width:1120px; margin:0 auto; padding:0 24px; }
+
+nav { position:sticky; top:0; z-index:10; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  background:rgba(5,7,26,.65); border-bottom:1px solid var(--line); }
+nav .wrap { height:64px; display:flex; align-items:center; justify-content:space-between; gap:16px; min-width:0; }
+.brand { display:flex; align-items:center; gap:12px; color:var(--ink-100); }
+.brand:hover { text-decoration:none; }
+.logo { width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,var(--syalia-400),var(--syalia-700)); box-shadow:0 6px 18px rgba(62,114,173,.3);
+  font-weight:700; color:#fff; }
+.brand b { font-weight:600; font-size:1.05rem; }
+.brand span.sub { color:var(--ink-400); font-weight:500; }
+.links { display:flex; align-items:center; gap:24px; font-size:.9rem; min-width:0; overflow-x:auto; scrollbar-width:none; }
+.links::-webkit-scrollbar { display:none; }
+.links a { color:var(--ink-300); }
+.links a:hover { color:#fff; text-decoration:none; }
+#lang { font:inherit; font-size:.75rem; font-weight:500; color:var(--ink-100); background:none; cursor:pointer;
+  border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:6px 12px; }
+#lang:hover { border-color:rgba(255,255,255,.3); }
+
+header { padding:96px 0 72px; position:relative; overflow:hidden; }
+header::before { content:""; position:absolute; inset:-30% -10% auto auto; width:640px; height:640px;
+  background:radial-gradient(closest-side,rgba(34,211,238,.14),transparent); pointer-events:none; }
+.eyebrow { display:flex; align-items:center; gap:10px; font-size:.75rem; text-transform:uppercase; letter-spacing:.25em;
+  color:var(--relay); margin-bottom:24px; }
+.eyebrow::before { content:""; width:32px; height:1px; background:var(--relay); }
+h1 { font-size:clamp(3rem,9vw,6rem); line-height:.95; margin:0; font-weight:700; }
+.lead { font-size:1.25rem; color:var(--ink-300); max-width:640px; margin:28px 0 0; }
+.chips { display:flex; flex-wrap:wrap; gap:10px; margin-top:36px; }
+.chip { font-size:.8rem; color:var(--ink-200); border:1px solid rgba(255,255,255,.1); border-radius:999px; padding:6px 14px; }
+.cta { display:flex; flex-wrap:wrap; gap:14px; margin-top:36px; }
+.btn { display:inline-flex; align-items:center; gap:8px; font-weight:600; padding:13px 24px; border-radius:999px; }
+.btn:hover { text-decoration:none; }
+.btn.primary { background:var(--relay); color:var(--ink-950); }
+.btn.primary:hover { background:#67e8f9; }
+.btn.ghost { color:var(--ink-100); border:1px solid rgba(255,255,255,.14); }
+.btn.ghost:hover { border-color:rgba(255,255,255,.35); }
+
+section { padding:88px 0; border-top:1px solid var(--line); }
+.kicker { font-size:.75rem; text-transform:uppercase; letter-spacing:.25em; color:var(--relay); margin-bottom:14px; }
+h2 { font-size:clamp(2rem,4.5vw,3rem); line-height:1.05; margin:0 0 20px; font-weight:700; }
+h3 { font-size:1.3rem; margin:0 0 10px; font-weight:700; }
+.prose { color:var(--ink-300); font-size:1.08rem; max-width:720px; }
+.prose p { margin:0 0 16px; }
+.prose strong { color:var(--ink-100); font-weight:600; }
+
+.three { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-top:44px; }
+.card { background:linear-gradient(160deg,rgba(255,255,255,.03),rgba(255,255,255,.01)); border:1px solid var(--line);
+  border-radius:20px; padding:28px; }
+.card p { color:var(--ink-300); margin:0; }
+.icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:20px;
+  background:var(--relay-soft); border:1px solid var(--relay-line); color:var(--relay); }
+.icon svg { width:22px; height:22px; }
+
+.diagram { margin-top:44px; border:1px solid var(--line); border-radius:24px; padding:32px 24px;
+  background:linear-gradient(135deg,rgba(34,211,238,.06),rgba(34,211,238,.01)); }
+.diagram svg { width:100%; height:auto; display:block; }
+.diagram text { font-family:'Inter',system-ui,sans-serif; }
+.caption { color:var(--ink-400); font-size:.9rem; margin-top:16px; text-align:center; }
+
+table { width:100%; border-collapse:collapse; margin-top:32px; font-size:.95rem; }
+th, td { text-align:left; vertical-align:top; padding:14px 16px; border-bottom:1px solid var(--line); }
+th { color:var(--ink-400); font-weight:500; font-size:.75rem; text-transform:uppercase; letter-spacing:.12em; }
+td { color:var(--ink-300); }
+td:first-child { color:var(--ink-100); font-weight:600; }
+.yes { color:var(--accent-400); } .no { color:#34d399; }
+.scroll { overflow-x:auto; }
+
+.steps { counter-reset:s; display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-top:44px; }
+.step { counter-increment:s; border-left:2px solid var(--relay-line); padding:4px 0 4px 22px; }
+.step::before { content:counter(s); display:block; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:2.4rem;
+  color:var(--relay); line-height:1; margin-bottom:12px; }
+.step p { color:var(--ink-300); margin:0; }
+.codebox { display:inline-flex; gap:6px; margin-top:14px; }
+.codebox span { font-family:'JetBrains Mono',monospace; font-size:1.25rem; width:34px; height:44px; display:flex;
+  align-items:center; justify-content:center; border-radius:8px; background:var(--ink-800); border:1px solid var(--relay-line);
+  color:var(--ink-100); }
+
+.two { display:grid; grid-template-columns:1fr 1fr; gap:28px; margin-top:40px; align-items:start; }
+.two h3 { margin-top:0; }
+.two .card pre { margin-top:14px; }
+.three > *, .two > *, .steps > *, .status > * { min-width:0; }
+
+.status { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:36px; }
+.status .card { padding:22px; }
+.status .name { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.15rem; color:var(--ink-100); }
+.status .what { color:var(--ink-400); font-size:.85rem; margin:4px 0 14px; }
+.pill { display:inline-block; font-size:.72rem; font-weight:600; border-radius:999px; padding:3px 10px; }
+.pill.done { background:rgba(52,211,153,.12); color:#34d399; border:1px solid rgba(52,211,153,.3); }
+.pill.wip { background:rgba(251,191,36,.12); color:var(--accent-400); border:1px solid rgba(251,191,36,.3); }
+
+.end { text-align:center; padding:110px 0; }
+.end h2 { font-size:clamp(2.2rem,6vw,4.2rem); }
+footer { border-top:1px solid var(--line); padding:40px 0; color:var(--ink-400); font-size:.9rem; }
+footer .wrap { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; align-items:center; }
+footer .links { flex-wrap:wrap; overflow:visible; }
+footer a { color:var(--ink-400); }
+footer a:hover { color:#fff; }
+
+@media (max-width:900px) {
+  .three, .steps, .two { grid-template-columns:1fr; }
+  .status { grid-template-columns:1fr 1fr; }
+  .links a.hide-sm { display:none; }
+  header { padding:64px 0 48px; }
+  section { padding:64px 0; }
+}
+@media (max-width:520px) {
+  .status { grid-template-columns:1fr; }
+  .brand span.sub { display:none; }
+  th, td { padding:12px 10px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="https://syalia.com"><div class="logo display">S</div><b class="display">SYALIA <span class="sub">/ relay</span></b></a>
+    <div class="links">
+      <a class="hide-sm" href="#how"><span lang="en">How it works</span><span lang="es">Cómo funciona</span></a>
+      <a class="hide-sm" href="#run"><span lang="en">Run a relay</span><span lang="es">Tu propio relay</span></a>
+      <a class="hide-sm" href="#docs"><span lang="en">Documentation</span><span lang="es">Documentación</span></a>
+      <a href="https://github.com/syalia-srl/relay">GitHub</a>
+      <button id="lang" type="button">EN&nbsp;/&nbsp;ES</button>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow"><span lang="en">Open source — Apache-2.0</span><span lang="es">Código abierto — Apache-2.0</span></div>
+    <h1 class="display">Relay</h1>
+    <p class="lead">
+      <span lang="en">An end-to-end encrypted channel between an app and the server it belongs to, through relays that cannot read it. Pair once with a QR code; after that the phone reaches its server from anywhere, and at home the traffic never leaves the house.</span>
+      <span lang="es">Un canal cifrado de extremo a extremo entre una app y el servidor al que pertenece, a través de relays que no pueden leerlo. Se empareja una vez con un código QR; desde entonces el teléfono llega a su servidor desde cualquier sitio, y en casa el tráfico no sale de casa.</span>
+    </p>
+    <div class="chips">
+      <span class="chip">Noise IKpsk1 + KK</span>
+      <span class="chip">X25519 · AES-GCM · SHA-256</span>
+      <span class="chip"><span lang="en">Libraries in Python, JavaScript and Go</span><span lang="es">Bibliotecas en Python, JavaScript y Go</span></span>
+      <span class="chip"><span lang="en">Shared test vectors</span><span lang="es">Vectores de prueba compartidos</span></span>
+    </div>
+    <div class="cta">
+      <a class="btn primary" href="#how"><span lang="en">How it works</span><span lang="es">Cómo funciona</span> →</a>
+      <a class="btn ghost" href="protocol.html"><span lang="en">Read the protocol</span><span lang="es">Leer el protocolo</span></a>
+    </div>
+  </div>
+</header>
+
+<section id="why">
+  <div class="wrap">
+    <div class="kicker"><span lang="en">Why</span><span lang="es">Por qué</span></div>
+    <h2 class="display"><span lang="en">Your server, reachable. Your data, unreadable on the way.</span><span lang="es">Tu servidor, alcanzable. Tus datos, ilegibles por el camino.</span></h2>
+    <div class="prose">
+      <p lang="en">A server that runs in an office or at home usually has no public address, and opening a port or a VPN for every phone is work most people never do. A relay solves the address problem: both ends dial out to it, and it joins them. The hard part is trust. This project makes the relay <strong>a pipe that carries only ciphertext</strong>, so it does not matter who runs it: us, you, or a stranger.</p>
+      <p lang="es">Un servidor que funciona en una oficina o en casa casi nunca tiene una dirección pública, y abrir un puerto o una VPN para cada teléfono es un trabajo que casi nadie hace. Un relay resuelve el problema de la dirección: los dos extremos se conectan hacia él y él los une. Lo difícil es la confianza. Este proyecto hace del relay <strong>un tubo que solo transporta texto cifrado</strong>, así que da igual quién lo opere: nosotros, tú o un desconocido.</p>
+    </div>
+    <div class="three">
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+        <h3 class="display"><span lang="en">End to end</span><span lang="es">De extremo a extremo</span></h3>
+        <p lang="en">Only the phone and its server hold keys. Every connection gets fresh keys, so a key stolen later does not open what was recorded before.</p>
+        <p lang="es">Solo el teléfono y su servidor tienen llaves. Cada conexión usa llaves nuevas, así que una llave robada más tarde no abre lo que se grabó antes.</p>
+      </div>
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
+        <h3 class="display"><span lang="en">Many relays, one list</span><span lang="es">Varios relays, una lista</span></h3>
+        <p lang="en">The server keeps an ordered list: a relay on its own network first, a public one after. The phone uses the first that answers and moves back up when it can.</p>
+        <p lang="es">El servidor tiene una lista ordenada: primero un relay en su propia red, después uno público. El teléfono usa el primero que responde y vuelve a subir en cuanto puede.</p>
+      </div>
+      <div class="card">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg></div>
+        <h3 class="display"><span lang="en">Auditable</span><span lang="es">Auditable</span></h3>
+        <p lang="en">A published framework (Noise), a protocol document precise enough to reimplement, and test vectors that every library passes, in three languages.</p>
+        <p lang="es">Un marco publicado (Noise), un documento de protocolo preciso como para reimplementarlo y vectores de prueba que pasan todas las bibliotecas, en tres lenguajes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="kicker"><span lang="en">How it works</span><span lang="es">Cómo funciona</span></div>
+    <h2 class="display"><span lang="en">Two ends, any number of relays in between.</span><span lang="es">Dos extremos, los relays que hagan falta en medio.</span></h2>
+    <div class="prose">
+      <p lang="en">The <strong>host</strong> is the end that is always on: the server. The <strong>guest</strong> is the end that comes and goes: the phone. Both open a WebSocket to a relay, the relay joins the two sockets of a channel, and passes frames from one to the other without opening them. The host keeps a channel on every relay of its list; the guest uses one at a time.</p>
+      <p lang="es">El <strong>host</strong> es el extremo que siempre está encendido: el servidor. El <strong>guest</strong> es el extremo que va y viene: el teléfono. Los dos abren un WebSocket hacia un relay; el relay une los dos sockets de un canal y pasa los frames de uno a otro sin abrirlos. El host mantiene un canal en cada relay de su lista; el guest usa uno a la vez.</p>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 960 300" role="img" aria-label="guest, relays and host">
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#22d3ee"/></marker>
+        </defs>
+        <rect x="20" y="95" width="200" height="110" rx="18" fill="#11152a" stroke="rgba(34,211,238,.45)"/>
+        <text x="120" y="140" text-anchor="middle" fill="#e9ecf5" font-size="20" font-weight="700">guest</text>
+        <text lang="en" x="120" y="168" text-anchor="middle" fill="#a3aece" font-size="14">the phone app</text><text lang="es" x="120" y="168" text-anchor="middle" fill="#a3aece" font-size="14">la app del teléfono</text>
+        <text lang="en" x="120" y="188" text-anchor="middle" fill="#6e7ba0" font-size="12">gs · 1 socket</text><text lang="es" x="120" y="188" text-anchor="middle" fill="#6e7ba0" font-size="12">gs · 1 socket</text>
+
+        <rect x="740" y="95" width="200" height="110" rx="18" fill="#11152a" stroke="rgba(34,211,238,.45)"/>
+        <text x="840" y="140" text-anchor="middle" fill="#e9ecf5" font-size="20" font-weight="700">host</text>
+        <text lang="en" x="840" y="168" text-anchor="middle" fill="#a3aece" font-size="14">your server</text><text lang="es" x="840" y="168" text-anchor="middle" fill="#a3aece" font-size="14">tu servidor</text>
+        <text lang="en" x="840" y="188" text-anchor="middle" fill="#6e7ba0" font-size="12">hs · a socket per relay</text><text lang="es" x="840" y="188" text-anchor="middle" fill="#6e7ba0" font-size="12">hs · un socket por relay</text>
+
+        <rect x="380" y="30" width="200" height="86" rx="16" fill="#0a0d1f" stroke="rgba(255,255,255,.14)"/>
+        <text lang="en" x="480" y="66" text-anchor="middle" fill="#e9ecf5" font-size="17" font-weight="600">local relay</text><text lang="es" x="480" y="66" text-anchor="middle" fill="#e9ecf5" font-size="17" font-weight="600">relay local</text>
+        <text lang="en" x="480" y="92" text-anchor="middle" fill="#6e7ba0" font-size="12">LAN · first choice</text><text lang="es" x="480" y="92" text-anchor="middle" fill="#6e7ba0" font-size="12">red local · primera opción</text>
+
+        <rect x="380" y="184" width="200" height="86" rx="16" fill="#0a0d1f" stroke="rgba(255,255,255,.14)"/>
+        <text lang="en" x="480" y="220" text-anchor="middle" fill="#e9ecf5" font-size="17" font-weight="600">public relay</text><text lang="es" x="480" y="220" text-anchor="middle" fill="#e9ecf5" font-size="17" font-weight="600">relay público</text>
+        <text lang="en" x="480" y="246" text-anchor="middle" fill="#6e7ba0" font-size="12">internet · fallback</text><text lang="es" x="480" y="246" text-anchor="middle" fill="#6e7ba0" font-size="12">internet · reserva</text>
+
+        <path d="M220 135 L378 76" stroke="#22d3ee" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+        <path d="M220 168 L378 224" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="6 6" fill="none" marker-end="url(#a)"/>
+        <path d="M738 135 L582 76" stroke="#22d3ee" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+        <path d="M738 168 L582 224" stroke="#22d3ee" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+
+        <path d="M120 236 C 120 292, 840 292, 840 236" stroke="#fbbf24" stroke-width="1.5" fill="none" stroke-dasharray="3 5"/>
+        <text lang="en" x="480" y="296" text-anchor="middle" fill="#fbbf24" font-size="12">Noise, end to end</text><text lang="es" x="480" y="296" text-anchor="middle" fill="#fbbf24" font-size="12">Noise, de extremo a extremo</text>
+      </svg>
+    </div>
+    <p class="caption">
+      <span lang="en">Both ends dial out. Relays see ciphertext and timing, never content or keys. The dashed line is the fallback road.</span>
+      <span lang="es">Los dos extremos se conectan hacia fuera. Los relays ven texto cifrado y tiempos, nunca contenido ni llaves. La línea discontinua es el camino de reserva.</span>
+    </p>
+
+    <div class="scroll">
+    <table>
+      <thead><tr>
+        <th></th>
+        <th>host</th>
+        <th>guest</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><span lang="en">Creates channels on relays</span><span lang="es">Crea canales en los relays</span></td>
+            <td><span lang="en">yes, with a project key</span><span lang="es">sí, con una llave de proyecto</span></td>
+            <td><span lang="en">no, joins with its token</span><span lang="es">no, se une con su token</span></td></tr>
+        <tr><td><span lang="en">Static key</span><span lang="es">Llave estática</span></td>
+            <td><span lang="en">one, long-lived</span><span lang="es">una, de larga duración</span></td>
+            <td><span lang="en">new for each pairing</span><span lang="es">nueva en cada emparejamiento</span></td></tr>
+        <tr><td><span lang="en">Handshakes</span><span lang="es">Handshakes</span></td>
+            <td><span lang="en">answers</span><span lang="es">responde</span></td>
+            <td><span lang="en">starts</span><span lang="es">inicia</span></td></tr>
+        <tr><td><span lang="en">Relay list</span><span lang="es">Lista de relays</span></td>
+            <td><span lang="en">decides and sends it</span><span lang="es">la decide y la envía</span></td>
+            <td><span lang="en">receives it, only from the host</span><span lang="es">la recibe, solo del host</span></td></tr>
+        <tr><td><span lang="en">After the handshake</span><span lang="es">Después del handshake</span></td>
+            <td colspan="2"><span lang="en">the same on both sides: messages of any size, either way</span><span lang="es">igual en los dos lados: mensajes de cualquier tamaño, en los dos sentidos</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="prose" style="margin-top:20px">
+      <span lang="en">The roles are fixed per channel, and the application picks which of its ends plays host. Every library implements both.</span>
+      <span lang="es">Los roles son fijos en cada canal, y la aplicación elige cuál de sus extremos hace de host. Cada biblioteca implementa los dos.</span>
+    </p>
+  </div>
+</section>
+
+<section id="pair">
+  <div class="wrap">
+    <div class="kicker"><span lang="en">Pairing</span><span lang="es">Emparejar</span></div>
+    <h2 class="display"><span lang="en">Scan, type six digits, done.</span><span lang="es">Escanea, teclea seis dígitos, listo.</span></h2>
+    <div class="steps">
+      <div class="step">
+        <h3 class="display"><span lang="en">Show a QR</span><span lang="es">Muestra un QR</span></h3>
+        <p lang="en">The server draws a one-time QR. It names the server's public key and carries a secret that lives five minutes.</p>
+        <p lang="es">El servidor genera un QR de un solo uso. Lleva la llave pública del servidor y un secreto que dura cinco minutos.</p>
+      </div>
+      <div class="step">
+        <h3 class="display"><span lang="en">Scan it</span><span lang="es">Escanéalo</span></h3>
+        <p lang="en">The phone makes its own key, proves it knows the secret, and shows a code.</p>
+        <p lang="es">El teléfono crea su propia llave, demuestra que conoce el secreto y muestra un código.</p>
+        <div class="codebox" aria-label="4 4 2 7 0 5"><span>4</span><span>4</span><span>2</span><span>7</span><span>0</span><span>5</span></div>
+      </div>
+      <div class="step">
+        <h3 class="display"><span lang="en">Type the code</span><span lang="es">Teclea el código</span></h3>
+        <p lang="en">You type that code on the server's page. Only then does the phone get in. The server never shows a code, so a stranger who photographed the QR has nothing you would type.</p>
+        <p lang="es">Tecleas ese código en la página del servidor. Solo entonces entra el teléfono. El servidor nunca muestra un código, así que quien haya fotografiado el QR no tiene nada que tú vayas a teclear.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="trust">
+  <div class="wrap">
+    <div class="kicker"><span lang="en">What a relay sees</span><span lang="es">Qué ve un relay</span></div>
+    <h2 class="display"><span lang="en">Assume the relay is hostile.</span><span lang="es">Supón que el relay es hostil.</span></h2>
+    <div class="prose">
+      <p lang="en">Every promise below holds for a relay that drops, delays, replays, reorders or alters frames. The full threat model is in <a href="security.html">SECURITY.md</a>.</p>
+      <p lang="es">Cada promesa de abajo se cumple con un relay que tira, retrasa, repite, reordena o altera frames. El modelo de amenazas completo está en <a href="security.html">SECURITY.md</a>.</p>
+    </div>
+    <div class="scroll">
+    <table>
+      <thead><tr><th><span lang="en">A relay can</span><span lang="es">Un relay puede</span></th><th><span lang="en">A relay cannot</span><span lang="es">Un relay no puede</span></th></tr></thead>
+      <tbody>
+        <tr><td class="yes"><span lang="en">see when each end is connected, how much it sends, and both IP addresses</span><span lang="es">ver cuándo está conectado cada extremo, cuánto envía y las dos direcciones IP</span></td>
+            <td class="no"><span lang="en">read any message, now or from a recording</span><span lang="es">leer ningún mensaje, ni en vivo ni de una grabación</span></td></tr>
+        <tr><td class="yes"><span lang="en">drop or delay frames, or close a connection</span><span lang="es">tirar o retrasar frames, o cerrar una conexión</span></td>
+            <td class="no"><span lang="en">inject, replay or reorder a message without the ends noticing</span><span lang="es">inyectar, repetir o reordenar un mensaje sin que los extremos lo noten</span></td></tr>
+        <tr><td class="yes"><span lang="en">make a pairing fail, so you scan again</span><span lang="es">hacer que un emparejamiento falle, y tengas que escanear otra vez</span></td>
+            <td class="no"><span lang="en">get a key of its choice accepted by your server</span><span lang="es">conseguir que tu servidor acepte una llave que elija él</span></td></tr>
+        <tr><td class="yes"><span lang="en">see an opaque id for the quota it applies</span><span lang="es">ver un id opaco para la cuota que aplica</span></td>
+            <td class="no"><span lang="en">learn who the customer is</span><span lang="es">saber quién es el cliente</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<section id="run">
+  <div class="wrap">
+    <div class="kicker"><span lang="en">Run your own</span><span lang="es">Tu propio relay</span></div>
+    <h2 class="display"><span lang="en">One static binary.</span><span lang="es">Un solo binario estático.</span></h2>
+    <div class="prose">
+      <p lang="en">The relay is a small Go program with no runtime dependencies. Since confidentiality never depends on the relay, running your own is about availability and metadata: on your own network, nobody else sees when your devices talk.</p>
+      <p lang="es">El relay es un programa pequeño en Go, sin dependencias en tiempo de ejecución. Como la confidencialidad nunca depende del relay, tener el tuyo es cuestión de disponibilidad y de metadatos: en tu propia red, nadie más ve cuándo hablan tus dispositivos.</p>
+    </div>
+    <div class="two">
+      <div class="card">
+        <h3 class="display"><span lang="en">Build and start</span><span lang="es">Compilar y arrancar</span></h3>
+<pre><code><span class="c"># Go 1.27 or later</span>
+git clone https://github.com/syalia-srl/relay
+cd relay/server
+CGO_ENABLED=0 go build -o relay ./cmd/relay
+
+RELAY_ADDR=127.0.0.1:8010 \
+RELAY_STATE_PATH=/var/lib/relay/channels.json \
+RELAY_KEYS_PATH=/etc/relay/keys.json \
+./relay</code></pre>
+        <p style="margin-top:14px"><span lang="en">Or as a container: <code>docker build -t relay server/</code>, with <code>/data</code> as a volume. It belongs behind a TLS proxy, because guests accept plain <code>ws://</code> only to private addresses.</span><span lang="es">O como contenedor: <code>docker build -t relay server/</code>, con <code>/data</code> como volumen. Va detrás de un proxy con TLS, porque los guests solo aceptan <code>ws://</code> en claro hacia direcciones privadas.</span></p>
+      </div>
+      <div class="card">
+        <h3 class="display"><span lang="en">Who may create channels</span><span lang="es">Quién puede crear canales</span></h3>
+<pre><code>{
+  "relay_id": "relay.example",
+  "keys": [
+    { "id": "office", "sha256": "&lt;hex of your key&gt;",
+      "channels": 200, "creates_per_minute": 20,
+      "bytes_per_day": 2000000000 },
+    { "id": "home", "sha256": "&lt;hex of another key&gt;",
+      "unlimited": true }
+  ],
+  "issuers": {}
+}</code></pre>
+        <p style="margin-top:14px"><span lang="en">Each key has its own quota, so one product cannot starve another. A quota of 0 allows nothing; only <code>"unlimited": true</code> lifts the limits, for a relay you run for yourself. The file holds digests, never keys. A vendor can also issue signed relay tokens; list its public key under <code>issuers</code>.</span><span lang="es">Cada llave tiene su propia cuota, así que un producto no puede dejar sin servicio a otro. Una cuota de 0 no permite nada; solo <code>"unlimited": true</code> quita los límites, para un relay que operas para ti. El archivo guarda digests, nunca llaves. Un proveedor también puede emitir tokens de relay firmados; pon su llave pública en <code>issuers</code>.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="docs">
+  <div class="wrap">
+    <div class="kicker"><span lang="en">Documentation</span><span lang="es">Documentación</span></div>
+    <h2 class="display"><span lang="en">Everything, in one place.</span><span lang="es">Todo, en un solo sitio.</span></h2>
+    <div class="prose">
+      <p lang="en">The protocol, the threat model, the relay's installation and one guide per library. Every page has a Markdown twin for agents and tools, and <a href="llms.txt">llms.txt</a> indexes the lot. This page's twin is <a href="index.md">index.md</a>.</p>
+      <p lang="es">El protocolo, el modelo de amenazas, la instalación del relay y una guía por biblioteca. Cada página tiene un gemelo en Markdown para agentes y herramientas, y <a href="llms.txt">llms.txt</a> lo indexa todo. El gemelo de esta página es <a href="index.md">index.md</a>.</p>
+    </div>
+    <div class="three">
+      <div class="card">
+        <h3 class="display"><a href="run-a-relay.html"><span lang="en">Run a relay</span><span lang="es">Opera un relay</span></a></h3>
+        <p lang="en">One static binary, a systemd unit, Caddy with TLS, and a <code>keys.json</code> with project keys, quotas and issuers. Includes the checks that prove it works.</p>
+        <p lang="es">Un binario estático, una unidad de systemd, Caddy con TLS y un <code>keys.json</code> con llaves de proyecto, cuotas y emisores. Incluye las comprobaciones que demuestran que funciona.</p>
+      </div>
+      <div class="card">
+        <h3 class="display"><a href="protocol.html"><span lang="en">Protocol</span><span lang="es">Protocolo</span></a></h3>
+        <p lang="en">The normative document: relay API v1, channel protocol v3, both Noise handshakes, frames, rekey, relay choice and control messages.</p>
+        <p lang="es">El documento normativo: API v1 del relay, protocolo de canal v3, los dos handshakes Noise, frames, rekey, elección de relay y mensajes de control.</p>
+      </div>
+      <div class="card">
+        <h3 class="display"><a href="security.html"><span lang="en">Security</span><span lang="es">Seguridad</span></a></h3>
+        <p lang="en">The threat model: what the code promises, what a hostile relay, a local network or a photographed QR can do, and what the code does not do.</p>
+        <p lang="es">El modelo de amenazas: qué promete el código, qué puede hacer un relay hostil, una red local o un QR fotografiado, y qué no hace el código.</p>
+      </div>
+      <div class="card">
+        <h3 class="display"><a href="python.html">Python</a></h3>
+        <p lang="en">The host and guest of the protocol, with async calls, a file store at mode 0600, a native-key interface and a worked echo example.</p>
+        <p lang="es">El host y el guest del protocolo, con llamadas async, un almacén en archivo con modo 0600, una interfaz de llave nativa y un ejemplo de eco.</p>
+      </div>
+      <div class="card">
+        <h3 class="display"><a href="javascript.html">JavaScript</a></h3>
+        <p lang="en">The same host and guest for Node and browsers, with <code>crypto.subtle</code>, no runtime dependencies, an Android Keystore key interface and an example.</p>
+        <p lang="es">El mismo host y guest para Node y navegadores, con <code>crypto.subtle</code>, sin dependencias en tiempo de ejecución, una interfaz de llave para Android Keystore y un ejemplo.</p>
+      </div>
+      <div class="card">
+        <h3 class="display"><a href="go.html">Go</a></h3>
+        <p lang="en">The module with a <code>context.Context</code> on every waiting call, the standard library's cryptography, a store interface and an example.</p>
+        <p lang="es">El módulo con un <code>context.Context</code> en cada llamada que espera, la criptografía de la biblioteca estándar, una interfaz de almacén y un ejemplo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="build">
+  <div class="wrap">
+    <div class="kicker"><span lang="en">Build on it</span><span lang="es">Construye encima</span></div>
+    <h2 class="display"><span lang="en">The same protocol in three languages.</span><span lang="es">El mismo protocolo en tres lenguajes.</span></h2>
+    <div class="prose">
+      <p lang="en">Each library implements both ends: pairing, the Noise handshakes, framing, control messages and relay failover. Each carries its own small Noise for the two patterns it needs, with no Noise dependency, and every host is tested against every guest through the relay. A guest can keep its private key in native code: the libraries only ask for Diffie-Hellman results.</p>
+      <p lang="es">Cada biblioteca implementa los dos extremos: emparejamiento, handshakes Noise, frames, mensajes de control y cambio de relay. Cada una lleva su propio Noise pequeño para los dos patrones que necesita, sin depender de ningún paquete de Noise, y cada host se prueba contra cada guest a través del relay. Un guest puede guardar su llave privada en código nativo: las bibliotecas solo piden resultados de Diffie-Hellman.</p>
+    </div>
+    <div class="status">
+      <div class="card"><div class="name"><span lang="en">Protocol</span><span lang="es">Protocolo</span></div><div class="what">PROTOCOL.md · vectors/</div><span class="pill done"><span lang="en">published</span><span lang="es">publicado</span></span></div>
+      <div class="card"><div class="name">Relay</div><div class="what">server/ · Go</div><span class="pill done"><span lang="en">published</span><span lang="es">publicado</span></span></div>
+      <div class="card"><div class="name">Python</div><div class="what">py/ · host + guest</div><span class="pill done"><span lang="en">published</span><span lang="es">publicado</span></span></div>
+      <div class="card"><div class="name">JavaScript · Go</div><div class="what">js/ · go/ · host + guest</div><span class="pill done"><span lang="en">published</span><span lang="es">publicado</span></span></div>
+    </div>
+  </div>
+</section>
+
+<section class="end">
+  <div class="wrap">
+    <h2 class="display"><span lang="en">Read it, run it, break it.</span><span lang="es">Léelo, ejecútalo, intenta romperlo.</span></h2>
+    <p class="prose" style="margin:20px auto 0">
+      <span lang="en">Found a weakness? Report it privately through the repository's Security tab. Building a product on it? Talk to us.</span>
+      <span lang="es">¿Encontraste una debilidad? Repórtala en privado desde la pestaña Security del repositorio. ¿Vas a construir un producto encima? Hablemos.</span>
+    </p>
+    <div class="cta" style="justify-content:center">
+      <a class="btn primary" href="https://github.com/syalia-srl/relay">github.com/syalia-srl/relay</a>
+      <a class="btn ghost" href="mailto:hello@syalia.com">hello@syalia.com</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="https://syalia.com"><div class="logo display" style="width:28px;height:28px;font-size:.85rem">S</div><b class="display" style="color:var(--ink-200)">SYALIA</b><span style="color:var(--ink-500)">© 2026</span></a>
+    <div class="links">
+      <a href="protocol.html">Protocol</a>
+      <a href="security.html">Security</a>
+      <a href="run-a-relay.html">Run a relay</a>
+      <a href="python.html">Python</a>
+      <a href="javascript.html">JavaScript</a>
+      <a href="go.html">Go</a>
+      <a href="index.md">Markdown</a>
+      <a href="llms.txt">llms.txt</a>
+      <a href="https://github.com/syalia-srl/relay/blob/main/LICENSE">Apache-2.0</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const set = (l) => { root.dataset.lang = l; root.lang = l; localStorage.setItem("lang", l); };
+  set(localStorage.getItem("lang") || (navigator.language.startsWith("es") ? "es" : "en"));
+  document.getElementById("lang").addEventListener("click", () => set(root.dataset.lang === "en" ? "es" : "en"));
+})();
+</script>
+</body>
+</html>
