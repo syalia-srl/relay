@@ -1,0 +1,41 @@
+{
+  "description": "PROTOCOL.md 5.3: the 6-digit pairing code for a handshake hash h.",
+  "cases": [
+    {
+      "h": "602e5116f6cd6db625f4088a8d6a9ec234ba78afcfc9a81c6bbea6db6b6d1888",
+      "code": "896929"
+    },
+    {
+      "h": "a83872b38f11f72a5678dd59df473ab8494d85bcb8da9c43ba0f4f3f847a2948",
+      "code": "853881"
+    },
+    {
+      "h": "97bc79167cab531478a643e294eb2b373a423927e8b904758dbe0f513de2654a",
+      "code": "031114"
+    },
+    {
+      "h": "c8a4d53e9b5adfff54d70cf3af9d5f5c978bfdcc97e40f88ec78e2d2017de12c",
+      "code": "929717"
+    },
+    {
+      "h": "18bc65bb4e1cfe669f39748d8c526067a28fb7834dee66dbb37c320b42b031c7",
+      "code": "784986"
+    },
+    {
+      "h": "ac7fc078441deba7e20fbd10311325e50fecb7572e3d1d01fb0c7abca644838f",
+      "code": "208990"
+    },
+    {
+      "h": "428b315a194b48b124e06c4e510de272a5604a4f764745117ea56eb9000239f5",
+      "code": "573035"
+    },
+    {
+      "h": "661819fe0b217d55b32fe43199821eb04978a48e3e898514bd661b6174363944",
+      "code": "206848"
+    },
+    {
+      "h": "0000000000000000000000000000000000000000000000000000000000000000",
+      "code": "590312"
+    }
+  ]
+}

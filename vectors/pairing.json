@@ -1,0 +1,55 @@
+{
+  "description": "PROTOCOL.md 5: a pairing with Noise_IKpsk1. The guest sends `frame1`, the host answers `frame2`, both derive `pairing_code`, then the transport frames follow in order. The guest shows the code after the `pong` (transport index 1); the person types it into the host before the transport frame at 0-based index `confirmed_before_frame`, the first one a host may send only after confirmation (`relays`). Frames are whole L0 data frames (0x01, then the L1 type byte). `refused` lists first messages the host must fail to read.",
+  "cases": [
+    {
+      "protocol_name": "Noise_IKpsk1_25519_AESGCM_SHA256",
+      "dev": "dev_01",
+      "channel": "AAECAwQFBgcICQoLDA0ODw",
+      "prologue": "72656c61792d6368616e6e656c2f3300066465765f3031001641414543417751464267634943516f4c4441304f4477",
+      "host_static_private": "a8d969e539d43c30aa4d2e4e503a6285b3562b3d31688c902ef9a23ee36f3206",
+      "host_static_public": "c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e",
+      "guest_static_private": "07202beb0190862b0f93f7284ff46d5c08c757c03b01d07637ee6cc48774ede9",
+      "guest_static_public": "d5000e9e348f4099a949843d4fc1ae4f46b59c21623d17c312be5b75448c8b72",
+      "guest_ephemeral_private": "587844e406513b279f961ca8fc7bd83011be42b98b9ed53673ffd793c2f0e4c5",
+      "host_ephemeral_private": "71993fc38cf54196a1909b1970cc5811231957a7f2932a90e2179a0754a1f118",
+      "psk": "a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4",
+      "message1": "c8c4592d1226a82037b175b67be299520e1a6bff95d0381492eb1ec1d8649b645d1bd2233376b3a101b02f39395d82056cc43ebadc0e759583735e84fdc5dad0804e3780e301b8bfe1b34c04d67887e96b897175bacae512475b61de3cb0117a",
+      "frame1": "0101c8c4592d1226a82037b175b67be299520e1a6bff95d0381492eb1ec1d8649b645d1bd2233376b3a101b02f39395d82056cc43ebadc0e759583735e84fdc5dad0804e3780e301b8bfe1b34c04d67887e96b897175bacae512475b61de3cb0117a",
+      "message2": "d2331155416dd29d615e05b0ed6f7526ffae43d70f5772f8a389769500aeea2a2f8488fcc04d0d999dbe1a461ab0d423",
+      "frame2": "0103d2331155416dd29d615e05b0ed6f7526ffae43d70f5772f8a389769500aeea2a2f8488fcc04d0d999dbe1a461ab0d423",
+      "handshake_hash": "089765ee7f42980368fb958518ba26342037cf60d422dbc07af4116d0b1ab591",
+      "transport": [
+        {
+          "sender": "guest",
+          "plaintext": "01007b226f70223a2270696e67227d",
+          "frame": "01042be272a4b0debcccc3d8c4596ba028cfb68cb92cfe3d8c9c31cd90d1b4ba4e"
+        },
+        {
+          "sender": "host",
+          "plaintext": "01007b226f70223a22706f6e67227d",
+          "frame": "010491f4061f5c04aaa199c993463abcbd9cf0c390d40dd2aa6b1ba3972b179133"
+        },
+        {
+          "sender": "host",
+          "plaintext": "01007b226f70223a2272656c617973222c2272656c617973223a5b7b2275726c223a2277733a2f2f3139322e3136382e312e31303a38303130222c226368616e6e656c223a22494345694979516c4a69636f4b536f724c4330754c77222c22746f6b656e223a2276767676767676767676767676767676767676767676767676767676767676767676767676767676767676227d2c7b2275726c223a227773733a2f2f72656c61792e6578616d706c65222c226368616e6e656c223a224d4445794d7a51314e6a63344f546f375044302d5077222c22746f6b656e223a2277777777777777777777777777777777777777777777777777777777777777777777777777777777777777227d5d7d",
+          "frame": "010453afb74bc9393652ea4b71530cd8671edf2231e6f782a5a5815b138feefa9804675cb935565f1f32457692cfcff49bed33b00da206b02c709c45166204f902205fdbf162ab61f36048d2897942daf756bce5674d1c7640ce8fd263b61e444b85b84c4b944c73c0f56cc563648628fb7383b890e08318474220b58de5820cc72dc4395b8486165db74b0b6ff3c5a9aaa77aa66bf7b86bd477d617e7f3f4dc426c710e1b0ddbd5a866b16460dac147a276c46a4084935eb8b6edb8ab2022d64897f96f99e3b15049779ce6f5d7deb377d65ab5a3bd0c6e279101f728cd9259ef8d242fca9bbede46cf185bef3bab67c2507b6cd8fab9dfec64fc5c9519ee2bca1898d89314650c665cbbded484e9e4bc06bd219e548c5c8459ea00f78519"
+        }
+      ],
+      "pairing_code": "442705",
+      "confirmed_before_frame": 2
+    }
+  ],
+  "refused": [
+    {
+      "name": "built with a wrong psk",
+      "psk_used": "5dce897f216b2f92682899085e8776184068fd819cd5e04294f2f8e9444c3bff",
+      "channel": "AAECAwQFBgcICQoLDA0ODw",
+      "message1": "c8c4592d1226a82037b175b67be299520e1a6bff95d0381492eb1ec1d8649b645d1bd2233376b3a101b02f39395d82056cc43ebadc0e759583735e84fdc5dad0804e3780e301b8bfe1b34c04d67887e91489edfe3be8b9380102137d2c39deda"
+    },
+    {
+      "name": "the valid message1, read on another channel",
+      "channel": "EBESExQVFhcYGRobHB0eHw",
+      "message1": "c8c4592d1226a82037b175b67be299520e1a6bff95d0381492eb1ec1d8649b645d1bd2233376b3a101b02f39395d82056cc43ebadc0e759583735e84fdc5dad0804e3780e301b8bfe1b34c04d67887e96b897175bacae512475b61de3cb0117a"
+    }
+  ]
+}

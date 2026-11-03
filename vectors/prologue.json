@@ -1,0 +1,20 @@
+{
+  "description": "PROTOCOL.md 3.1: the prologue for a device id and a channel id.",
+  "cases": [
+    {
+      "dev": "dev_01",
+      "channel": "AAECAwQFBgcICQoLDA0ODw",
+      "prologue": "72656c61792d6368616e6e656c2f3300066465765f3031001641414543417751464267634943516f4c4441304f4477"
+    },
+    {
+      "dev": "a",
+      "channel": "b",
+      "prologue": "72656c61792d6368616e6e656c2f33000161000162"
+    },
+    {
+      "dev": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "channel": "cccccccccccccccccccccc",
+      "prologue": "72656c61792d6368616e6e656c2f33004064646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464001663636363636363636363636363636363636363636363"
+    }
+  ]
+}

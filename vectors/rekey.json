@@ -1,0 +1,25 @@
+{
+  "description": "PROTOCOL.md 7.3: a cipher state that has key `key` at nonce 2^20 - 1 encrypts `plaintext_before`, rekeys to `rekeyed`, and encrypts `plaintext_after` at nonce 2^20.",
+  "cases": [
+    {
+      "key": "1b229efdcbf1fc94d8206c40c6bf1085459563c8bbff8c33829ab9f95d939730",
+      "rekeyed": "b476e171bf1a99acdbb8db4e7f046da90e53a92e42c4d7898507acdd6c68fee8",
+      "nonce_before": 1048575,
+      "plaintext_before": "00006c617374206265666f72652072656b6579",
+      "ciphertext_before": "d6d55f06e49515545214e7a2dc26f12e9a83aad67a193cf106d2d1690ab2924b4e3651",
+      "nonce_after": 1048576,
+      "plaintext_after": "000066697273742061667465722072656b6579",
+      "ciphertext_after": "921ec93cd16a202374964dc4ca93daa898101d2979f1efb2979fb7963f438ce16c2324"
+    },
+    {
+      "key": "e6b74977117eb8f76521d0943f726710652736fa003ea86843bbf77019793509",
+      "rekeyed": "c6c09f0defdff79c5eaa63787c53b3c3764a94c580a9069efbe33a2be7c4f174",
+      "nonce_before": 1048575,
+      "plaintext_before": "00006c617374206265666f72652072656b6579",
+      "ciphertext_before": "46ce8fb5bd45da867eb6242e7b8422ecb3905970744b5df83d7d589e4b08cd4d7aad92",
+      "nonce_after": 1048576,
+      "plaintext_after": "000066697273742061667465722072656b6579",
+      "ciphertext_after": "1fecda4a65adc942f2d604a4a628bd1c840061729f32a96683c46be4890954c102a7d1"
+    }
+  ]
+}

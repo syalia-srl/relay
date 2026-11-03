@@ -1,0 +1,110 @@
+{
+  "description": "PROTOCOL.md 9.1: what the receiver does with a control message: apply it, ignore it, or abort. A `relays` list whose every URL fails the policy is ignored (8.3).",
+  "cases": [
+    {
+      "text": "{\"op\":\"ping\"}",
+      "receiver": "host",
+      "result": "apply"
+    },
+    {
+      "text": "{\"op\":\"ping\"}",
+      "receiver": "guest",
+      "result": "apply"
+    },
+    {
+      "text": "{\"op\":\"pong\",\"n\":1}",
+      "receiver": "guest",
+      "result": "apply"
+    },
+    {
+      "text": "{\"op\":\"close\"}",
+      "receiver": "host",
+      "result": "apply"
+    },
+    {
+      "text": "{\"op\":\"close\"}",
+      "receiver": "guest",
+      "result": "abort"
+    },
+    {
+      "text": "{\"op\":\"closed\"}",
+      "receiver": "guest",
+      "result": "apply"
+    },
+    {
+      "text": "{\"op\":\"revoked\"}",
+      "receiver": "guest",
+      "result": "apply"
+    },
+    {
+      "text": "{\"op\":\"revoked\"}",
+      "receiver": "host",
+      "result": "abort"
+    },
+    {
+      "text": "{\"op\": \"relays\", \"relays\": [{\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}]}",
+      "receiver": "guest",
+      "result": "apply"
+    },
+    {
+      "text": "{\"op\": \"relays\", \"relays\": [{\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}]}",
+      "receiver": "host",
+      "result": "abort"
+    },
+    {
+      "text": "{\"op\": \"relays\", \"relays\": []}",
+      "receiver": "guest",
+      "result": "abort"
+    },
+    {
+      "text": "{\"op\": \"relays\", \"relays\": [{\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}, {\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}]}",
+      "receiver": "guest",
+      "result": "abort"
+    },
+    {
+      "text": "{\"op\": \"relays\", \"relays\": [{\"url\": \"wss://relay.example\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"short\"}]}",
+      "receiver": "guest",
+      "result": "abort"
+    },
+    {
+      "text": "{\"op\": \"relays\", \"relays\": [{\"url\": \"ws://relay.local\", \"channel\": \"MDEyMzQ1Njc4OTo7PD0-Pw\", \"token\": \"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww\"}]}",
+      "receiver": "guest",
+      "result": "ignore"
+    },
+    {
+      "text": "{\"op\":\"hello\"}",
+      "receiver": "host",
+      "result": "ignore"
+    },
+    {
+      "text": "{\"op\":\"PING\"}",
+      "receiver": "host",
+      "result": "ignore"
+    },
+    {
+      "text": "{\"op\":1}",
+      "receiver": "host",
+      "result": "abort"
+    },
+    {
+      "text": "{\"type\":\"ping\"}",
+      "receiver": "host",
+      "result": "abort"
+    },
+    {
+      "text": "[\"ping\"]",
+      "receiver": "host",
+      "result": "abort"
+    },
+    {
+      "text": "{\"op\":\"ping\",\"op\":\"close\"}",
+      "receiver": "host",
+      "result": "abort"
+    },
+    {
+      "text": "{\"op\":\"ping\"",
+      "receiver": "host",
+      "result": "abort"
+    }
+  ]
+}

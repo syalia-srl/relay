@@ -1,6 +1,7 @@
 [project]
 name = "inbox-relay"
 version = "0.1.0"
+license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
@@ -16,6 +17,8 @@ packages = ["src/inbox_relay"]
 
 [dependency-groups]
 dev = ["pytest", "pytest-asyncio", "httpx"]
+# The reference used to generate and check vectors/ (PROTOCOL.md section 12).
+vectors = ["cryptography>=44", "noiseprotocol==0.3.1"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
