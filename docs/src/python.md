@@ -153,6 +153,11 @@ After a restart, `guest.hosts` lists the paired hosts; each is the same `PairedH
 object `pair` returned, and the library reconnects them. A pairing that a restart
 interrupts is not kept: the person scans a new payload.
 
+Three rounds in which every relay answers 4401 or 4410 make the guest treat the
+pairing as revoked: it deletes the pairing from its store, and `guest.hosts` no
+longer lists it. A relay that lost its channel store, or that swept a channel with
+no socket for 30 days, causes the same. The person then scans a new payload.
+
 ## Store and errors
 
 The state path is the whole store. The Python library has no store interface: it
@@ -164,7 +169,7 @@ directory and its backup. Two processes must not open the same state path.
 | `PayloadInvalid` | The payload is not the JSON of section 4, or every relay in it fails the URL policy. |
 | `WrongCode` | The typed code matches no pending key; `tries_left` says how many remain. |
 | `PairingFailed` | The pairing expired, collided, ran out of tries, or has ended. |
-| `Revoked` | The host revoked this device. |
+| `Revoked` | The host revoked this device, or every relay lost the channel. |
 | `RelayError` | Any other failure, including a damaged state file. |
 
 All four specific errors derive from `RelayError`. Transient network errors are

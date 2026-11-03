@@ -147,6 +147,11 @@ err = guest.Close()
 After a restart, `guest.Hosts()` lists the paired hosts. A pairing that a restart
 interrupts is not kept: the person scans a new payload.
 
+Three rounds in which every relay answers 4401 or 4410 make the guest treat the
+pairing as revoked: it deletes the pairing from its store, and `guest.Hosts()` no
+longer lists it. A relay that lost its channel store, or that swept a channel with
+no socket for 30 days, causes the same. The person then scans a new payload.
+
 ## Store
 
 ```go
@@ -167,7 +172,7 @@ holds keys: the host's static key, or the guest's per-pairing keys.
 | `relay.ErrPayloadInvalid` | The payload is not the JSON of section 4, or every relay in it fails the URL policy. |
 | `*relay.WrongCodeError` | The typed code matches no pending key; `TriesLeft` says how many remain. |
 | `relay.ErrPairingFailed` | The pairing expired, collided, ran out of tries, or has ended. |
-| `relay.ErrRevoked` | The host revoked this device. |
+| `relay.ErrRevoked` | The host revoked this device, or every relay lost the channel. |
 | `relay.ErrClosed` | The host or guest has been closed. |
 
 `errors.Is` and `errors.As` match all of them. Transient network errors are retried

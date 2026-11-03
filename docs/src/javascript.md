@@ -154,6 +154,11 @@ After a restart, `guest.hosts` lists the paired hosts; each is the same `PairedH
 object `pair` returned, and the library reconnects them. A pairing that a restart
 interrupts is not kept: the person scans a new payload.
 
+Three rounds in which every relay answers 4401 or 4410 make the guest treat the
+pairing as revoked: it deletes the pairing from its store, and `guest.hosts` no
+longer lists it. A relay that lost its channel store, or that swept a channel with
+no socket for 30 days, causes the same. The person then scans a new payload.
+
 ## Stores
 
 A store is any object with `load()` and `save(state)`, both returning promises.
@@ -180,7 +185,7 @@ a key-value service, as long as `load` and `save` carry the whole object.
 | `PayloadInvalid` | The payload is not the JSON of section 4, or every relay in it fails the URL policy. |
 | `WrongCode` | The typed code matches no pending key; `triesLeft` says how many remain. |
 | `PairingFailed` | The pairing expired, collided, ran out of tries, or has ended. |
-| `Revoked` | The host revoked this device. |
+| `Revoked` | The host revoked this device, or every relay lost the channel. |
 | `RelayError` | Any other failure, including a damaged store. |
 
 All four specific errors extend `RelayError`. Transient network errors are retried
