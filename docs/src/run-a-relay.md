@@ -149,6 +149,12 @@ ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
 RestrictAddressFamilies=AF_INET AF_INET6
 CapabilityBoundingSet=
 LockPersonality=yes
@@ -156,6 +162,12 @@ MemoryDenyWriteExecute=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+UMask=0077
+# The relay only listens on loopback and makes no outbound connection.
+IPAddressDeny=any
+IPAddressAllow=localhost
 
 [Install]
 WantedBy=multi-user.target
@@ -180,6 +192,8 @@ sudo systemctl enable --now relay
 mode `0700` on every start. `ProtectSystem=strict` makes the filesystem read-only for
 the service apart from the state directory and its private temporary directory. The
 keys file is readable by the service group and by nothing else.
+`IPAddressDeny=any` with `IPAddressAllow=localhost` limits the service to loopback
+addresses, and `UMask=0077` makes the files it creates readable only by the service.
 
 `systemctl status relay` shows the last log lines. `journalctl -u relay` shows all of
 them. A log line names at most the first eight characters of a channel id, and never
@@ -199,6 +213,39 @@ relay.example.com {
 Caddy obtains and renews a certificate for the name once the DNS record points at
 the host, and proxies WebSocket upgrades without further settings. Guests use
 `wss://relay.example.com` as the base URL; the relay's routes are relative to it.
+
+An access log, if enabled, must not record the `Authorization` header: v1 project
+keys and host tokens travel in it. Caddy writes no access log when the site sends it
+to `discard`:
+
+```caddyfile
+relay.example.com {
+	reverse_proxy 127.0.0.1:8010
+	log {
+		output discard
+	}
+}
+```
+
+When the log is kept, the `filter` encoder deletes the header from every entry:
+
+```caddyfile
+relay.example.com {
+	reverse_proxy 127.0.0.1:8010
+	log {
+		output file /var/log/caddy/relay.log
+		format filter {
+			wrap json
+			fields {
+				request>headers>Authorization delete
+			}
+		}
+	}
+}
+```
+
+A v1 guest token travels in the first WebSocket frame, not in the URL. A v0 relay
+puts its slot tokens in the request line, and an access log records that line.
 
 Guests accept a plain `ws://` URL only when its host is a literal private address
 (PROTOCOL.md 8.1). A public name is always `wss://`.
@@ -267,11 +314,13 @@ holds each channel id, the creation and last-seen times, the digest of each side
 token, and the identifier of the key the channel was created with. It never holds a
 token. A copy of the file does not let anyone join a channel.
 
-The store is written on creation, deletion and shutdown. A restart keeps every
-channel: the tokens still authenticate because only their digests are needed. Losing
-the file loses every pairing; the devices pair again. A state path the service cannot
-write makes the relay log `channel store not writable`, keep channels in memory and
-lose them on the next restart.
+A creation is written at once when the previous write is at least a second old.
+Creations and deletions inside that second are coalesced into one write per second,
+and shutdown writes any remaining change. A restart keeps every channel: the tokens
+still authenticate because only their digests are needed. Losing the file loses every
+pairing; the devices pair again. A state path the service cannot write makes the
+relay log `channel store not writable`, keep channels in memory and lose them on the
+next restart.
 
 An upgrade is a new binary and a restart:
 
@@ -297,9 +346,15 @@ no `ExecReload`, so `systemctl reload` is not the command; `systemctl kill` with
 
 The channel store prunes itself: a channel whose guest never authenticated leaves
 after one hour, and a channel with no authenticated socket leaves after 30 days.
-`RELAY_MAX_CHANNELS` caps the store (default 50000). Anonymous v0 creation is rate
-limited by `RELAY_CREATE_BURST` and `RELAY_CREATE_PER_MINUTE`; v0 exists for one
-migration release and `RELAY_V0=off` turns it off.
+`RELAY_MAX_CHANNELS` caps the store (default 50000). `RELAY_MAX_PENDING_AUTH` caps
+the sockets waiting for `auth` (default 1024); an upgrade above the cap answers HTTP
+503, which means too many sockets are already waiting for authentication. A per-IP
+connection limit at the proxy bounds how many sockets one address holds.
+
+Anonymous v0 creation is rate limited by `RELAY_CREATE_BURST` and
+`RELAY_CREATE_PER_MINUTE`. v0 is off unless `RELAY_V0=on`, and a new relay never
+needs it. A v0 relay carries its slot tokens in the request line
+(`/ws/{id}?token=`), which a proxy access log records.
 
 ## The container
 
