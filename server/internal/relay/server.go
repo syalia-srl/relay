@@ -63,7 +63,7 @@ func ConfigFromEnv() Config {
 		Addr:            envOr("RELAY_ADDR", "127.0.0.1:8010"),
 		StatePath:       envOr("RELAY_STATE_PATH", "/data/channels.json"),
 		KeysPath:        envOr("RELAY_KEYS_PATH", ""),
-		V0:              !strings.EqualFold(envOr("RELAY_V0", "on"), "off"),
+		V0:              strings.EqualFold(envOr("RELAY_V0", ""), "on"),
 		MaxChannels:     envInt("RELAY_MAX_CHANNELS", 50000),
 		CreateBurst:     float64(envInt("RELAY_CREATE_BURST", 30)),
 		CreatePerMinute: float64(envInt("RELAY_CREATE_PER_MINUTE", 30)),

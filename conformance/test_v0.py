@@ -170,6 +170,20 @@ async def test_logs_never_carry_a_token(relay):
     assert "token=" not in logs
 
 
+def test_v0_is_off_by_default(make_relay):
+    relay = make_relay(RELAY_V0=None)
+    assert httpx.post(relay.url("/channels")).status_code == 404
+    assert httpx.get(relay.url("/ws/whatever"), headers={"Connection": "Upgrade"}).status_code == 404
+    # v1 still works with v0 left at its default.
+    assert relay.channel_v1()["channel"]
+
+
+def test_v0_is_on_when_asked_case_insensitively(make_relay):
+    relay = make_relay(RELAY_V0="ON")
+    channel = relay.create_v0()
+    assert len(channel["channel_id"]) == 64
+
+
 def test_v0_can_be_switched_off(make_relay):
     relay = make_relay(RELAY_V0="off")
     assert httpx.post(relay.url("/channels")).status_code == 404
