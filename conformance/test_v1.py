@@ -8,6 +8,8 @@ import time
 import httpx
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from websockets.asyncio.client import connect
+from websockets.exceptions import InvalidStatus
 
 from relaytest import (
     LOCAL_KEY,
@@ -19,6 +21,7 @@ from relaytest import (
     recv,
     sha256_hex,
     v1_socket,
+    ws_connect,
 )
 
 
@@ -158,6 +161,31 @@ async def test_a_token_for_another_channel_is_4401(relay):
         await expect_close(websocket, 4401)
 
 
+async def test_pending_auth_sockets_are_capped(make_relay):
+    relay = make_relay(RELAY_MAX_PENDING_AUTH="2")
+    channel = relay.channel_v1()
+    path = f"/v1/ws/{channel['channel']}"
+    idle = [await connect(relay.ws_url(path), max_size=None) for _ in range(2)]
+    try:
+        with pytest.raises(InvalidStatus) as refused:
+            await connect(relay.ws_url(path), max_size=None)
+        assert refused.value.response.status_code == 503
+    finally:
+        for websocket in idle:
+            await websocket.close()
+    # Leaving an idle socket releases its slot, so a new upgrade is accepted.
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            async with connect(relay.ws_url(path), max_size=None) as websocket:
+                await websocket.send(json.dumps({"auth": channel["host_token"]}))
+                assert await read_event(websocket) == "ready"
+            return
+        except (InvalidStatus, OSError):
+            assert time.monotonic() < deadline, "the pending-auth counter never released"
+            await asyncio.sleep(0.05)
+
+
 async def test_a_late_auth_is_4401(relay):
     channel = relay.channel_v1()
     async with v1_socket(relay, channel["channel"]) as websocket:
@@ -170,11 +198,14 @@ async def test_a_late_auth_is_4401(relay):
 
 async def test_a_malformed_auth_is_4401(relay):
     channel = relay.channel_v1()
+    token = channel["host_token"].encode()
     for first in (
         b"not json at all",
         b'{"auth": 5}',
         b'{"no_auth": true}',
-        b'{"auth": "' + channel["host_token"].encode() + b'"} trailing',
+        b'{"auth": "' + token + b'"} trailing',
+        b'{"auth": "' + token + b'", "auth": "' + token + b'"}',
+        b'{"Auth": "' + token + b'"}',
     ):
         async with v1_socket(relay, channel["channel"]) as websocket:
             await websocket.send(first.decode())
@@ -182,6 +213,18 @@ async def test_a_malformed_auth_is_4401(relay):
     async with v1_socket(relay, channel["channel"]) as websocket:
         await websocket.send(b"\x01binary")
         await expect_close(websocket, 4401)
+
+
+async def test_a_foreign_origin_is_allowed(relay):
+    # A browser or WebView always sends Origin. Authentication is the bearer
+    # token in the first frame, never a cookie, so the upgrade must not be
+    # refused for a cross-site origin.
+    channel = relay.channel_v1()
+    async with ws_connect(
+        relay, f"/v1/ws/{channel['channel']}", origin="https://app.example"
+    ) as websocket:
+        await websocket.send(json.dumps({"auth": channel["host_token"]}))
+        assert await read_event(websocket) == "ready"
 
 
 async def test_ready_comes_before_peer_connected(relay):
@@ -340,6 +383,14 @@ async def test_bytes_per_day_closes_with_4429_and_refuses_auth(relay):
         await expect_close(bad, 4401)
     async with v1_socket(relay, channel["channel"], channel["host_token"]) as over:
         await expect_close(over, 4429)
+
+
+def test_a_channel_created_just_before_shutdown_survives(relay):
+    channel = relay.channel_v1()
+    relay.stop()  # no ticker has had time to run
+    relay.start()
+    raw = json.loads(relay.state_path.read_text())
+    assert any(row["channel_id"] == channel["channel"] for row in raw["channels"])
 
 
 async def test_a_v1_channel_survives_a_restart(relay):

@@ -45,6 +45,7 @@ func TestTheStoreFileHoldsNoTokenAndIsPrivate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	store.Save()
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -72,6 +73,7 @@ func TestV1ChannelsSurviveARestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	store.Save()
 	after := NewStore(path)
 	got, side, ok := after.ByToken(digestOf(hostToken))
 	if !ok || got.ID != ch.ID || side != host {
@@ -82,6 +84,68 @@ func TestV1ChannelsSurviveARestart(t *testing.T) {
 	}
 	if _, _, ok := after.ByToken(digestOf(guestToken)); !ok {
 		t.Fatal("the guest token did not survive a restart")
+	}
+}
+
+func TestCreateWritesAtOnceThenCoalesces(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "channels.json")
+	store := NewStore(path)
+	first, _, _, err := store.Create(1, KeyInfo{}, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := NewStore(path).Len(); got != 1 {
+		t.Fatalf("the first creation is not on disk at once: %d channels", got)
+	}
+	second, _, _, err := store.Create(1, KeyInfo{}, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), second.ID) {
+		t.Fatal("a second creation within a second rewrote the store")
+	}
+	if !store.SaveIfDirty() {
+		t.Fatal("the ticker's flush found nothing to write")
+	}
+	after := NewStore(path)
+	for _, ch := range []*Channel{first, second} {
+		if _, ok := after.channels[ch.ID]; !ok {
+			t.Fatalf("channel %s is not on disk after the flush", ch.ID)
+		}
+	}
+}
+
+func TestDeleteWritesAtOnceThenCoalesces(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "channels.json")
+	store := NewStore(path)
+	a, _, _, _ := store.Create(1, KeyInfo{}, 100)
+	b, _, _, _ := store.Create(1, KeyInfo{}, 100)
+	store.Save()
+	store.written = time.Time{}
+	if !store.Delete(a.ID, codeDeleted) || !store.Delete(b.ID, codeDeleted) {
+		t.Fatal("the channels were not deleted")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), a.ID) {
+		t.Fatal("the first delete did not reach disk at once")
+	}
+	if !strings.Contains(string(raw), b.ID) {
+		t.Fatal("a second delete within a second rewrote the store")
+	}
+	store.SaveIfDirty()
+	raw, err = os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), b.ID) {
+		t.Fatal("the ticker's flush did not write the second delete")
 	}
 }
 
@@ -140,6 +204,7 @@ func TestUnwritableStoreKeepsChannelsInMemory(t *testing.T) {
 	if store.Get(ch.ID) == nil {
 		t.Fatal("an unwritable store lost its channel")
 	}
+	store.Save()
 	if _, err := os.Stat(path); err == nil {
 		t.Fatal("the store wrote into a path it cannot use")
 	}
@@ -199,6 +264,7 @@ func TestSavedFileKeepsBothKindsOfRow(t *testing.T) {
 	store := NewStore(path)
 	v0, _, _, _ := store.Create(0, KeyInfo{}, 100)
 	v1, _, _, _ := store.Create(1, KeyInfo{ID: "sha256:def", Unlimited: true}, 100)
+	store.Save()
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

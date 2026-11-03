@@ -53,11 +53,11 @@ func VerifyRelayToken(raw string, issuers map[string]ed25519.PublicKey, relayID 
 	if len(parts) != 3 {
 		return nil, errMalformed
 	}
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	payload, err := base64.RawURLEncoding.Strict().DecodeString(parts[1])
 	if err != nil || len(payload) == 0 {
 		return nil, errMalformed
 	}
-	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
+	sig, err := base64.RawURLEncoding.Strict().DecodeString(parts[2])
 	if err != nil || len(sig) != ed25519.SignatureSize {
 		return nil, errMalformed
 	}

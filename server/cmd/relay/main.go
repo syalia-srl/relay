@@ -63,6 +63,15 @@ func main() {
 		}
 	}()
 
+	// Store changes are coalesced; write them at most once a second.
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			srv.SaveIfDirty()
+		}
+	}()
+
 	log.Printf("listening on %s", cfg.Addr)
 	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("listen: %v", err)
