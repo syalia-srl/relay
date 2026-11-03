@@ -126,11 +126,17 @@ class Pairing:
         self.channels: list[_Channel] = []
         self.pending: dict[bytes, str] = {}
         self.unmatched = 0
+        self.confirming = False
         self.bound = False
         self.bound_key: bytes | None = None
         self.ended = False
         self.expiry: asyncio.Task | None = None
         self.deadline: asyncio.Task | None = None
+
+    @property
+    def device(self) -> str:
+        """The device id this pairing binds, to find it again with ``Host.pairing``."""
+        return self.dev
 
     @property
     def payload(self) -> str:
@@ -154,7 +160,9 @@ class Host:
         self._pairings: dict[str, Pairing] = {}
         self._faulty: set[str] = set()
         self._paused: dict[str, float] = {}
-        self._readers: set[asyncio.Queue] = set()
+        # Messages wait here until the application iterates; a full inbox makes
+        # the channel readers wait, which pushes back on the relay.
+        self._inbox: asyncio.Queue[tuple[Device, bytes] | None] = asyncio.Queue(maxsize=64)
         self._closed = False
 
     @classmethod
@@ -189,6 +197,13 @@ class Host:
     @property
     def devices(self) -> list[Device]:
         return list(self._devices.values())
+
+    def pairing(self, device: str) -> Pairing:
+        """The open pairing for ``device``, so another request can confirm it."""
+        pairing = self._pairings.get(device)
+        if pairing is None or pairing.bound:
+            raise PairingFailed("the pairing has ended")
+        return pairing
 
     async def pair(self, name: str) -> Pairing:
         """Open one pairing on every usable relay and build its payload (section 5.2)."""
@@ -244,37 +259,25 @@ class Host:
             device._ready.set()
             for channel in device._channels.values():
                 await self._stop_channel(channel)
-        for queue in self._readers:
-            while True:
-                try:
-                    queue.put_nowait(None)
-                    break
-                except asyncio.QueueFull:
-                    queue.get_nowait()
+        # The channel tasks are stopped, so nothing else fills the inbox now.
+        if self._inbox.full():
+            self._inbox.get_nowait()
+        self._inbox.put_nowait(None)
 
-    def __aiter__(self) -> AsyncIterator[tuple[Device, bytes]]:
-        queue: asyncio.Queue = asyncio.Queue(maxsize=64)
-        self._readers.add(queue)
-        return self._iterate(queue)
-
-    async def _iterate(self, queue: asyncio.Queue) -> AsyncIterator[tuple[Device, bytes]]:
-        try:
-            while True:
-                if self._closed and queue.empty():
-                    return
-                item = await queue.get()
-                if item is None:
-                    return
-                yield item
-        finally:
-            self._readers.discard(queue)
+    async def __aiter__(self) -> AsyncIterator[tuple[Device, bytes]]:
+        while (item := await self._inbox.get()) is not None:
+            yield item
 
     # -- pairing ----------------------------------------------------------
 
     async def _confirm(self, pairing: Pairing, code: str) -> Device:
         if self._pairings.get(pairing.dev) is not pairing or pairing.bound:
             raise PairingFailed("the pairing has ended")
-        matches = [key for key, value in pairing.pending.items() if hmac.compare_digest(value, code)]
+        if pairing.confirming:
+            raise PairingFailed("this pairing is already being confirmed")
+        # Typed text may hold anything; only six ASCII digits can match a code.
+        typed = code.strip().encode("ascii", "replace")
+        matches = [key for key, value in pairing.pending.items() if hmac.compare_digest(value.encode(), typed)]
         if len(matches) != 1:
             if not matches:
                 pairing.unmatched += 1
@@ -286,7 +289,11 @@ class Host:
             raise PairingFailed("too many wrong codes")
 
         guest = matches[0]
-        channels = await self._create_channels(pairing.dev, pairing=False, guest=guest)
+        pairing.confirming = True
+        try:
+            channels = await self._create_channels(pairing.dev, pairing=False, guest=guest)
+        finally:
+            pairing.confirming = False
         if self._pairings.get(pairing.dev) is not pairing:
             await self._delete_channels(channels)
             raise PairingFailed("the pairing has ended")
@@ -392,7 +399,7 @@ class Host:
         relays = self._usable()
         results = await asyncio.gather(*(create_channel(relay) for relay in relays), return_exceptions=True)
         channels = []
-        for relay, result in zip(relays, results):
+        for relay, result in zip(relays, results, strict=True):
             if isinstance(result, BaseException):
                 continue
             channel = _Channel(
@@ -751,8 +758,7 @@ class Host:
         device = self._devices.get(dev)
         if device is None:
             return
-        for queue in self._readers:
-            await queue.put((device, message))
+        await self._inbox.put((device, message))
 
     async def _send(self, device: Device, message: bytes) -> None:
         if not isinstance(message, (bytes, bytearray)):

@@ -11,7 +11,7 @@ class PairingFailed(RelayError):
     """A pairing ended without binding a key."""
 
 
-class WrongCode(PairingFailed):
+class WrongCode(RelayError):
     """The typed code matches no pending key, and the pairing may continue."""
 
     def __init__(self, tries_left: int):
