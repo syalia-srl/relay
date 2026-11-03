@@ -203,7 +203,7 @@ export class PairedHost {
             allGone = false;
             continue;
           }
-          if (!(error instanceof RelayError) && !(error instanceof TimeoutError)) throw error;
+          // Any other failure, a bug included, costs this attempt only.
           allGone = false;
           continue;
         }
@@ -212,14 +212,8 @@ export class PairedHost {
         try {
           await this._serve(socket, session, position);
         } catch (error) {
+          // Reconnect, a closed socket or any other failure: back to step 1 of §8.2.
           if (error instanceof Done) return;
-          if (
-            !(error instanceof Reconnect) &&
-            !(error instanceof SocketClosed) &&
-            !(error instanceof RelayError)
-          ) {
-            throw error;
-          }
         } finally {
           this._ready = false;
           this._pendingCode = null;
@@ -347,7 +341,7 @@ export class PairedHost {
   async _receive(socket, session, incoming) {
     if (incoming.length === 0) throw new Reconnect();
     const body = incoming.slice(1);
-    if (incoming[0] === ABORT) throw new Reconnect();
+    if (incoming[0] === ABORT && incoming.length === 1) throw new Reconnect();
     if (incoming[0] !== TRANSPORT) {
       await this._abort(socket);
       throw new Reconnect();

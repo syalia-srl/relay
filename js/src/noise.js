@@ -253,7 +253,12 @@ export class HandshakeState {
     const remote = theirs === "e" ? this.#remoteEphemeral : this.#remoteStatic;
     if (remote === null) throw new ProtocolViolation(`${token} has no remote key`);
     if (mine === "e" && this.#ephemeral !== null) return x25519(this.#ephemeral, remote);
-    return this.#staticKey.dh(remote);
+    try {
+      return await this.#staticKey.dh(remote);
+    } catch {
+      // A native key reports a bad remote key in its own way.
+      throw new ProtocolViolation("a remote X25519 key is invalid");
+    }
   }
 
   async writeMessage(payload = new Uint8Array(0)) {

@@ -276,3 +276,23 @@ test("a low-order ephemeral key is a protocol violation", async () => {
     return true;
   });
 });
+
+test("a native key that fails its dh is a protocol violation", async () => {
+  // A keystore reports a bad remote key with its own error; the socket loops
+  // only abort on ProtocolViolation.
+  const host = await MemoryKey.generate();
+  const native = {
+    publicKey: (await MemoryKey.generate()).publicKey,
+    dh: async () => {
+      throw new TypeError("keystore refused");
+    },
+  };
+  const guest = await HandshakeState.create({
+    pattern: "KK",
+    initiator: true,
+    prologue: new Uint8Array(0),
+    staticKey: native,
+    remoteStatic: host.publicKey,
+  });
+  await assert.rejects(guest.writeMessage(), ProtocolViolation);
+});

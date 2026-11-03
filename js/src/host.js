@@ -566,7 +566,8 @@ export class Host {
           await sleep(backoff.next(), channel.stop.signal);
           continue;
         }
-        if (!(error instanceof RelayError)) throw error;
+        // Any other failure, a bug included, costs this attempt and not the
+        // channel: the loop runs unawaited, so a throw would end it for good.
         await sleep(backoff.next(), channel.stop.signal);
         continue;
       }
@@ -586,9 +587,8 @@ export class Host {
             return;
           }
           if (error.code === 4429) this._pause(channel.url);
-        } else if (!(error instanceof RelayError)) {
-          throw error;
         }
+        // Anything else ends this socket only; the channel reconnects.
       } finally {
         channel.socket = null;
         this._dropSession(channel);
@@ -628,6 +628,11 @@ export class Host {
         await this._onTransport(channel, socket, body);
         return;
       case ABORT:
+        // PROTOCOL.md §3.2: an abort has an empty body.
+        if (body.length !== 0) {
+          await this._abort(channel, socket, false);
+          return;
+        }
         channel.candidate = null;
         this._dropSession(channel);
         return;
