@@ -12,11 +12,11 @@ Documentation: <https://relay.syalia.com>
 |---|---|
 | [`PROTOCOL.md`](PROTOCOL.md) | The protocol, precise enough to reimplement |
 | [`SECURITY.md`](SECURITY.md) | The threat model, and how to report a vulnerability |
-| [`server/`](server) | The relay: one static Go binary |
+| [`server/`](server) | The relay: one static Go binary, and its Dockerfile |
 | [`py/`](py), [`js/`](js), [`go/`](go) | The libraries, each with the host and the guest side |
 | [`vectors/`](vectors) | Test vectors every library passes |
 | [`conformance/`](conformance) | A black-box suite for any relay implementation |
-| [`deploy/`](deploy) | A systemd unit and a Dockerfile for the relay |
+| [`deploy/`](deploy) | The systemd unit for the relay |
 | [`docs/`](docs) | The documentation site, built from Markdown |
 
 Each library has an `API.md` that fixes its public API, and an `examples/` directory
