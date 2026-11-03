@@ -37,6 +37,7 @@ type candidate struct {
 type channel struct {
 	id         string
 	url        string
+	hostURL    string
 	hostToken  string
 	guestToken string
 	dev        string
@@ -52,10 +53,11 @@ type channel struct {
 	socket    *socket
 }
 
-func newChannel(credentials credentials, url, dev string, pairing bool) *channel {
+func newChannel(credentials credentials, url, hostURL, dev string, pairing bool) *channel {
 	return &channel{
 		id:         credentials.channel,
 		url:        url,
+		hostURL:    hostURL,
 		hostToken:  credentials.hostToken,
 		guestToken: credentials.guestToken,
 		dev:        dev,
@@ -280,6 +282,9 @@ func OpenHost(ctx context.Context, store Store, relays []Relay) (*Host, error) {
 		if !urlAllowed(relay.URL) {
 			return nil, fmt.Errorf("relay URL fails the policy of PROTOCOL.md §8.1: %s", relay.URL)
 		}
+		if relay.HostURL != "" && !hostURLAllowed(relay.HostURL) {
+			return nil, fmt.Errorf("host URL fails the policy of PROTOCOL.md §2.3: %s", relay.HostURL)
+		}
 	}
 	state, firstRun, err := loadState(store)
 	if err != nil {
@@ -374,11 +379,18 @@ func (h *Host) loadDevices(state map[string]any) error {
 			if !okChannel || !okHost || !okGuest {
 				return errors.New("the state file is damaged")
 			}
+			hostURL := urlText
+			for _, configured := range h.relays {
+				if configured.URL == urlText {
+					hostURL = configured.hostURL()
+					break
+				}
+			}
 			item := newChannel(credentials{
 				channel:    channelID,
 				hostToken:  hostToken,
 				guestToken: guestToken,
-			}, urlText, id, false)
+			}, urlText, hostURL, id, false)
 			item.guest = bytes.Clone(guest)
 			item.device = device
 			device.channels[channelID] = item
@@ -665,8 +677,9 @@ func (h *Host) confirm(ctx context.Context, pairing *Pairing, code string) (*Dev
 	for _, item := range oldChannels {
 		item.mu.Lock()
 		item.candidate = nil
+		sameGuest := bytes.Equal(item.guest, guest)
 		item.mu.Unlock()
-		if !bytes.Equal(item.guest, guest) {
+		if !sameGuest {
 			h.abortChannel(item)
 		}
 	}
@@ -865,7 +878,7 @@ func (h *Host) createChannels(ctx context.Context, dev string, pairing bool, gue
 		h.mu.Unlock()
 		for index, relay := range relays {
 			if failures[index] == nil {
-				channels = append(channels, newChannel(results[index], relay.URL, dev, pairing))
+				channels = append(channels, newChannel(results[index], relay.URL, relay.hostURL(), dev, pairing))
 			}
 		}
 		return channels, ErrClosed
@@ -881,7 +894,7 @@ func (h *Host) createChannels(ctx context.Context, dev string, pairing bool, gue
 			continue
 		}
 		h.ids[credentials.channel] = struct{}{}
-		item := newChannel(credentials, relay.URL, dev, pairing)
+		item := newChannel(credentials, relay.URL, relay.hostURL(), dev, pairing)
 		item.guest = bytes.Clone(guest)
 		channels = append(channels, item)
 	}
@@ -957,7 +970,9 @@ func (h *Host) runSocket(item *channel, retry *backoff) (result outcome) {
 	var socket *socket
 	defer func() {
 		// A panic, like any other failure, costs this attempt and not the channel.
-		_ = recover()
+		if value := recover(); value != nil {
+			logPanic(value)
+		}
 		if socket != nil {
 			socket.Close()
 		}
@@ -966,7 +981,7 @@ func (h *Host) runSocket(item *channel, retry *backoff) (result outcome) {
 		item.mu.Unlock()
 		h.dropSession(item)
 	}()
-	socket = newSocket(item.url, item.id, item.hostToken)
+	socket = newSocket(item.hostURL, item.id, item.hostToken)
 	openCtx, cancel := context.WithTimeout(h.ctx, socketTimeout)
 	err := socket.Open(openCtx)
 	cancel()
@@ -1457,7 +1472,7 @@ func (h *Host) deleteChannels(ctx context.Context, channels []*channel) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _ = deleteChannel(deleteCtx, item.url, item.id, item.hostToken)
+			_, _ = deleteChannel(deleteCtx, item.hostURL, item.id, item.hostToken)
 		}()
 	}
 	wg.Wait()

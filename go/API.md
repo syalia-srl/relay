@@ -34,6 +34,14 @@ for {
 err = host.Revoke(ctx, device)
 ```
 
+- A `relay.Relay` has an optional `HostURL` for the host's own use; it defaults to
+  `URL`. `URL` is the guests' URL and keeps the section 8.1 policy. `HostURL` follows
+  section 2.3: `wss://` anywhere, or `ws://` only to loopback, a private literal
+  address, or a plain name without dots (a container or compose service name). A
+  `ws://` host URL across a shared LAN sends the project key and host token in
+  cleartext, so use one only on loopback or on a network whose only members are the
+  host and the relay (a container network); the library cannot check that. Pairing
+  payloads and `relays` messages carry `URL` only.
 - `host.Devices()` lists bound devices; a `*Device` has `ID()`, `Name()` and
   `Connected()`.
 - `device.Send` waits until the device is connected or `ctx` ends.
@@ -83,6 +91,13 @@ A `relay.Store` is `Load() ([]byte, error)` (nil, nil on the first run) and
 `relay.ErrPairingFailed`, `relay.ErrRevoked`, `relay.ErrPayloadInvalid`,
 `relay.ErrClosed` and `*relay.WrongCodeError`, all matched with `errors.Is` and
 `errors.As`. Transient network errors are retried inside and never returned.
+
+## Panics
+
+The connection loops recover a panic so one bug costs one attempt, not the whole
+host or guest. `relay.PanicLogf` receives the panic and its stack and defaults to
+`log.Printf`; replace it before opening a host or guest to route panics to the
+application's logger, or set it to nil to keep them silent.
 
 ## Not in the API
 

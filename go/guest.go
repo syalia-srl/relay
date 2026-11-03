@@ -460,7 +460,8 @@ func (p *PairedHost) run() {
 func (p *PairedHost) tryRelay(entry relayEntry, position int, retry *backoff) (established bool, err error) {
 	var socket *socket
 	defer func() {
-		if recover() != nil {
+		if value := recover(); value != nil {
+			logPanic(value)
 			err = errAttempt
 		}
 		if socket != nil {
@@ -486,15 +487,17 @@ func (p *PairedHost) connect(entry relayEntry) (socket *socket, session *session
 	p.connecting = socket
 	p.mu.Unlock()
 	defer func() {
+		if value := recover(); value != nil {
+			logPanic(value)
+			err = errAttempt
+			ok = false
+		}
 		p.mu.Lock()
 		if p.connecting == socket {
 			p.connecting = nil
 		}
 		p.mu.Unlock()
-		if !ok {
-			if recover() != nil {
-				err = errAttempt
-			}
+		if !ok && socket != nil {
 			socket.Close()
 		}
 	}()

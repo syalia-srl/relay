@@ -28,6 +28,14 @@ await host.revoke(device);
 await host.close();
 ```
 
+- `new Relay(url, { key, hostUrl })` takes an optional `hostUrl` for the host's own
+  use; it defaults to `url`. `url` is the guests' URL and keeps the section 8.1
+  policy. `hostUrl` follows section 2.3: `wss://` anywhere, or `ws://` only to
+  loopback, a private literal address, or a plain name without dots (a container or
+  compose service name). A `ws://` host URL across a shared LAN sends the project key
+  and host token in cleartext, so use one only on loopback or on a network whose only
+  members are the host and the relay (a container network); the library cannot check
+  that. Pairing payloads and `relays` messages carry `url` only.
 - `host.devices` lists bound devices; a device has `id`, `name` and `connected`.
 - `device.send` waits until the device is connected; pass `{ signal }` to give up:
   `device.send(bytes, { signal: AbortSignal.timeout(5000) })`.
@@ -58,6 +66,9 @@ await guest.close();                              // stops connections, keeps pa
   per pairing with `crypto.subtle` and keeps it in the store. A native `key` serves one
   pairing, as in Python.
 - `guest.hosts` lists paired hosts after a restart.
+- A browser WebSocket cannot be paused, so a guest whose application stops reading
+  `for await (const message of host)` gets its socket closed when 256 frames wait
+  unread, and reconnects, losing the frames in flight. Read the iterator continuously.
 
 ## Stores
 

@@ -20,6 +20,8 @@ export class HostileProxy {
     this._server = null;
     this._websocketServer = null;
     this._connections = new Set();
+    this.httpRequests = 0;
+    this.websockets = 0;
   }
 
   get url() {
@@ -52,6 +54,7 @@ export class HostileProxy {
   }
 
   _forward(request, response) {
+    this.httpRequests += 1;
     const upstream = http.request(
       this.httpTarget + request.url,
       { method: request.method, headers: { authorization: request.headers.authorization ?? "" } },
@@ -74,6 +77,7 @@ export class HostileProxy {
     const upstream = new WebSocket(this.target + request.url);
     this._connections.add(client);
     upstream.on("open", () => {
+      this.websockets += 1;
       this._connections.add(upstream);
       client.on("message", (data, isBinary) => this._pipe(client, upstream, "up", data, isBinary));
       upstream.on("message", (data, isBinary) => this._pipe(upstream, client, "down", data, isBinary));
@@ -122,6 +126,12 @@ export class HostileProxy {
         const copy = Buffer.from(data);
         copy[3] ^= 0x01;
         destination.send(copy, { binary: true });
+        return;
+      }
+      case "oversize": {
+        // A system frame larger than any L1 frame. Before the size check the
+        // client skips it and stays connected.
+        destination.send(Buffer.alloc(70_000), { binary: true });
         return;
       }
       default:

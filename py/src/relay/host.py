@@ -65,6 +65,7 @@ class _Channel:
         self,
         channel: str,
         url: str,
+        host_url: str,
         host_token: str,
         guest_token: str,
         dev: str,
@@ -73,6 +74,7 @@ class _Channel:
     ):
         self.id = channel
         self.url = url
+        self.host_url = host_url
         self.host_token = host_token
         self.guest_token = guest_token
         self.dev = dev
@@ -409,6 +411,7 @@ class Host:
             channel = _Channel(
                 channel=result.channel,
                 url=relay.url,
+                host_url=relay.host_url,
                 host_token=result.host_token,
                 guest_token=result.guest_token,
                 dev=dev,
@@ -442,7 +445,7 @@ class Host:
         if not channels:
             return
         await asyncio.gather(
-            *(delete_channel(channel.url, channel.id, channel.host_token) for channel in channels),
+            *(delete_channel(channel.host_url, channel.id, channel.host_token) for channel in channels),
             return_exceptions=True,
         )
 
@@ -482,7 +485,7 @@ class Host:
             if paused > 0:
                 await asyncio.sleep(paused)
                 continue
-            socket = Socket(channel.url, channel.id, channel.host_token)
+            socket = Socket(channel.host_url, channel.id, channel.host_token)
             try:
                 async with asyncio.timeout(SOCKET_TIMEOUT):
                     await socket.open()
@@ -824,9 +827,14 @@ class Host:
                 for stored in item["channels"]:
                     if not url_allowed(stored["url"]):
                         continue
+                    host_url = next(
+                        (relay.host_url for relay in self._relays if relay.url == stored["url"]),
+                        stored["url"],
+                    )
                     channel = _Channel(
                         channel=stored["channel"],
                         url=stored["url"],
+                        host_url=host_url,
                         host_token=stored["host_token"],
                         guest_token=stored["guest_token"],
                         dev=device.id,

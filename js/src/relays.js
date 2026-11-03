@@ -9,6 +9,13 @@ import { ChannelGone, ProtocolViolation, RelayError, SocketClosed } from "./erro
 import { isB64Url, parse } from "./strictjson.js";
 
 const HTTP_TIMEOUT = 10_000;
+// One L1 frame is at most 65,536 bytes and a system frame is tiny.
+const MAX_FRAME = 65537;
+// The small JSON the host reads from the relay is under 200 bytes.
+const MAX_BODY = 64 * 1024;
+// Messages wait for the application; a full queue closes the socket instead of
+// growing without limit.
+const MAX_QUEUE = 256;
 
 /** PROTOCOL.md §8.1: the relay URLs a guest and a host may exchange. */
 export function urlAllowed(url) {
@@ -24,7 +31,11 @@ export function urlAllowed(url) {
   if (parts.port !== "" && (Number(parts.port) < 1 || Number(parts.port) > 65535)) return false;
   if (parts.protocol === "wss:") return true;
   if (parts.protocol !== "ws:") return false;
-  const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i.exec(url)[1];
+  // WHATWG URL also parses ws:10.0.0.1 and ws:/10.0.0.1; §8.1 wants an
+  // absolute URL, so refuse anything without the authority marker.
+  const match = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i.exec(url);
+  if (match === null) return false;
+  const authority = match[1];
   const host = parts.hostname;
   if (!host.startsWith("[")) {
     const rawHost = authority.replace(/:\d*$/, "");
@@ -44,17 +55,61 @@ export function urlAllowed(url) {
   return first === 10 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168);
 }
 
+/**
+ * PROTOCOL.md §2.3 for the URL a host reaches a relay by for itself: wss
+ * anywhere, or ws only to loopback, a private literal address, or a plain name
+ * without dots (a container or compose service name).
+ */
+export function hostUrlAllowed(url) {
+  if (typeof url !== "string" || [...url].length > 2048) return false;
+  let parts;
+  try {
+    parts = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parts.username !== "" || parts.password !== "") return false;
+  if (parts.search !== "" || parts.hash !== "") return false;
+  if (parts.port !== "" && (Number(parts.port) < 1 || Number(parts.port) > 65535)) return false;
+  if (parts.protocol === "wss:") return true;
+  if (parts.protocol !== "ws:") return false;
+  const host = parts.hostname;
+  if (host === "") return false;
+  if (host.startsWith("[")) {
+    const text = host.slice(1, -1);
+    if (text.includes("%")) return false;
+    if (text === "::1") return true;
+    const first = text.split(":")[0] || "0";
+    return /^[0-9a-f]+$/.test(first) && ((Number.parseInt(first, 16) >> 8) & 0xfe) === 0xfc;
+  }
+  const quad = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (quad === null) return !host.includes(".");
+  const [first, second] = quad.slice(1).map(Number);
+  return (
+    first === 127 ||
+    first === 10 ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168)
+  );
+}
+
 /** A relay the host application uses, with the project key that creates channels. */
 export class Relay {
   /**
    * @param {string} url The guests' URL of the relay.
-   * @param {{ key: string }} options The project key that creates channels.
+   * @param {{ key: string, hostUrl?: string }} options The project key that
+   *   creates channels, and the URL the host itself uses (defaults to url).
    */
-  constructor(url, { key }) {
+  constructor(url, { key, hostUrl }) {
     if (!urlAllowed(url)) {
       throw new TypeError(`relay URL fails the policy of PROTOCOL.md §8.1: ${url}`);
     }
+    const ownUrl = hostUrl ?? url;
+    if (!hostUrlAllowed(ownUrl)) {
+      throw new TypeError(`host URL fails the policy of PROTOCOL.md §2.3: ${ownUrl}`);
+    }
     this.url = url;
+    this.hostUrl = ownUrl;
     this.key = key;
   }
 }
@@ -100,14 +155,17 @@ function httpBase(base) {
 
 /** POST /v1/channels with the relay's project key (PROTOCOL.md §2.3). */
 export async function createChannel(relay) {
-  const response = await request("POST", `${httpBase(relay.url)}/v1/channels`, relay.key);
+  const response = await request("POST", `${httpBase(relay.hostUrl)}/v1/channels`, relay.key);
   if (response.status !== 201) {
     throw new RelayError(`creating a channel failed with HTTP ${response.status}`);
   }
   let value;
   try {
-    value = parse(await response.text());
-  } catch {
+    const body = new Uint8Array(await response.arrayBuffer());
+    if (body.length > MAX_BODY) throw new RelayError("the relay answered too large a body");
+    value = parse(new TextDecoder().decode(body));
+  } catch (error) {
+    if (error instanceof RelayError) throw error;
     throw new RelayError("the relay answered invalid JSON");
   }
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -146,7 +204,7 @@ export class Socket {
   #token;
   #websocket = null;
   #closed = null;
-  #messages = new Queue();
+  #messages = new Queue(MAX_QUEUE);
   #sendLock = new Mutex();
   #opened = Promise.withResolvers();
 
@@ -241,12 +299,29 @@ export class Socket {
   }
 
   #receive(data) {
+    const size = typeof data === "string" ? utf8(data).length : data.byteLength;
+    if (size > MAX_FRAME) {
+      this.#fail(1009);
+      return;
+    }
     if (typeof data === "string") {
-      this.#messages.tryPush({ text: data });
+      if (!this.#messages.tryPush({ text: data })) this.#fail(1009);
       return;
     }
     // binaryType is "arraybuffer", so this is an ArrayBuffer.
-    this.#messages.tryPush({ binary: new Uint8Array(data) });
+    if (!this.#messages.tryPush({ binary: new Uint8Array(data) })) this.#fail(1009);
+  }
+
+  #fail(code) {
+    // Closing the queue makes a reader that drains it see the failure even
+    // when the closed marker itself cannot fit.
+    this.#messages.close();
+    this.#shut(code);
+    try {
+      this.#websocket?.close(code);
+    } catch {
+      // The socket may already be closing.
+    }
   }
 
   #shut(code) {
