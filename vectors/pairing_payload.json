@@ -1,0 +1,144 @@
+{
+  "description": "PROTOCOL.md 4: pairing payloads a guest accepts or refuses at time `now`. relays_kept lists the indexes of the relays that survive the URL policy.",
+  "cases": [
+    {
+      "name": "valid",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": true,
+      "relays_kept": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "valid without optional fields",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}]}",
+      "valid": true,
+      "relays_kept": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "unknown fields are ignored",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\",\"extra\":{\"a\":1}}",
+      "valid": true,
+      "relays_kept": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "a relay failing the URL policy is dropped",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://relay.local\",\"channel\":\"x\",\"token\":\"y\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": true,
+      "relays_kept": [
+        1
+      ]
+    },
+    {
+      "name": "no relay passes the URL policy",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://8.8.8.8\",\"channel\":\"x\",\"token\":\"y\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "empty relay list",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "17 relays",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "version 2",
+      "now": 1800000000,
+      "text": "{\"v\":2,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "version as a string",
+      "now": 1800000000,
+      "text": "{\"v\":\"3\",\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "hs too short",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f0\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "hs in uppercase",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"C6A944FC224FE66480506ED1592D56BD71594F091A3E8DB952E508EE72F6F01E\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "psk not hex",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "dev with a slash",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev/01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "dev empty",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "dev of 65 characters",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "exp missing",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "expired by more than 60 s",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1799999939,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "expired by less than 60 s",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1799999941,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}",
+      "valid": true,
+      "relays_kept": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "name of 101 characters",
+      "now": 1800000000,
+      "text": "{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn\",\"url\":\"https://office.example\"}",
+      "valid": false
+    },
+    {
+      "name": "not an object",
+      "now": 1800000000,
+      "text": "[{\"v\":3,\"hs\":\"c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e\",\"psk\":\"a2980c6649184a005d63ffd1d64c1797553ba247811273f69446d0154004e6e4\",\"dev\":\"dev_01\",\"exp\":1800000300,\"relays\":[{\"url\":\"ws://192.168.1.10:8010\",\"channel\":\"AAECAwQFBgcICQoLDA0ODw\",\"token\":\"ttttttttttttttttttttttttttttttttttttttttttt\"},{\"url\":\"wss://relay.example\",\"channel\":\"EBESExQVFhcYGRobHB0eHw\",\"token\":\"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu\"}],\"name\":\"Office\",\"url\":\"https://office.example\"}]",
+      "valid": false
+    }
+  ]
+}

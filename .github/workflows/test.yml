@@ -10,3 +10,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv run --python 3.12 pytest -q
+  vectors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run --python 3.12 --only-group vectors python vectors/tools/check_cacophony.py
+      - run: uv run --python 3.12 --only-group vectors python -W ignore vectors/tools/generate.py --check

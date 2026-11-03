@@ -1,0 +1,96 @@
+{
+  "description": "PROTOCOL.md 6 and 7: a connection with Noise_KK, then transport frames in order, including an empty message and a message in three fragments (given by digest). `refused` lists first messages the host must fail to read.",
+  "cases": [
+    {
+      "protocol_name": "Noise_KK_25519_AESGCM_SHA256",
+      "dev": "dev_01",
+      "channel": "ICEiIyQlJicoKSorLC0uLw",
+      "prologue": "72656c61792d6368616e6e656c2f3300066465765f30310016494345694979516c4a69636f4b536f724c4330754c77",
+      "host_static_private": "a8d969e539d43c30aa4d2e4e503a6285b3562b3d31688c902ef9a23ee36f3206",
+      "host_static_public": "c6a944fc224fe66480506ed1592d56bd71594f091a3e8db952e508ee72f6f01e",
+      "guest_static_private": "6e5cf26f2bff44b7e2436d9e9ce2adccf4598d9aea62c4f8c798a474803d988f",
+      "guest_static_public": "9237d3ef04d7fa2105758ff8b3492b2a4f97738ee919fca6211afad2f6da9c77",
+      "guest_ephemeral_private": "5e2f551f9c41f9ff2e97aee1bd34df49ee77f53a217e8b9f823ffcd1177583d1",
+      "host_ephemeral_private": "a1ea84605effdaade38ae74d7219febd90ea6aa836f49f275393f7ab0f904944",
+      "message1": "6d3de9247184bbba962d5507682c582246e4827e1a02f48105ed60894719f22310ea1d284309d238f9993e3e7d8afc28",
+      "frame1": "01026d3de9247184bbba962d5507682c582246e4827e1a02f48105ed60894719f22310ea1d284309d238f9993e3e7d8afc28",
+      "message2": "786fd01e6df99f8fac18e5bf4b07a4f6dbf9fa5e3236485e679e7c577a7f573f2c596c144ca0e3be60b1d4c54b666f6b",
+      "frame2": "0103786fd01e6df99f8fac18e5bf4b07a4f6dbf9fa5e3236485e679e7c577a7f573f2c596c144ca0e3be60b1d4c54b666f6b",
+      "handshake_hash": "e80802ecd28b17f3f368b24ed379ad343aebeabbb76d6d0cfca80d9eae2400f3",
+      "transport": [
+        {
+          "sender": "guest",
+          "plaintext": "01007b226f70223a2270696e67227d",
+          "frame": "0104ab2a9219587ce47637923c5dca9fbe5bcaeb25b3a1103b90bc32c7ab78f2a1"
+        },
+        {
+          "sender": "host",
+          "plaintext": "01007b226f70223a22706f6e67227d",
+          "frame": "01044bd0d9747a18dba5ce8c3186e0ea692fa6cd4af68aa6931f56ebc92baec694"
+        },
+        {
+          "sender": "guest",
+          "plaintext": "0000",
+          "frame": "0104cd0164554f29045b8a7b5122c21ea2d8f573"
+        },
+        {
+          "sender": "guest",
+          "plaintext": "000068656c6c6f20686f7374",
+          "frame": "010490440d4df21249350609bca4669551e7b160b62d2fa87b03f1d9c222"
+        },
+        {
+          "sender": "host",
+          "plaintext": {
+            "sha256": "9f43d81883bdf590f6f23d9eda8d991fb2b4926cac13d7525d52c5e415f700e3",
+            "length": 65519,
+            "head": "0001"
+          },
+          "frame": {
+            "sha256": "0136207769c8c9589e145570a772fc28d28beb21e3371ab984fea443a2cc4288",
+            "length": 65537
+          }
+        },
+        {
+          "sender": "host",
+          "plaintext": {
+            "sha256": "c0c7fcfb16d946acea69a55bb528c13a66517825ef78f646e6b1c357cf081a1c",
+            "length": 65519,
+            "head": "0001"
+          },
+          "frame": {
+            "sha256": "c5a3160ac2e629612eb10db797332dbf420c4ebd66af97bf0a43e3df7c4af72f",
+            "length": 65537
+          }
+        },
+        {
+          "sender": "host",
+          "plaintext": "00000c0d0e0f101112131415",
+          "frame": "0104193b9074e791318587a90f4bb41c6d49cba5a558e11224242c069759"
+        },
+        {
+          "sender": "host",
+          "plaintext": "01007b226f70223a227265766f6b6564227d",
+          "frame": "010443e3225539c57c9142ed1be051d2bd652fbe5b59a3c0a3fa3754fb438f64090a1a22"
+        }
+      ],
+      "fragmented_message": {
+        "kind": 0,
+        "length": 131044,
+        "content": "byte i is i mod 251",
+        "sha256": "ad1ef0691fb991b349e78a76cbe007ec607089e2cf116713a195172566cf2af6",
+        "frames": [
+          5,
+          6,
+          7
+        ]
+      }
+    }
+  ],
+  "refused": [
+    {
+      "name": "from a guest key that is not bound",
+      "guest_static_private": "862bdfaa7786d84ec03cc429a0cf22fdd17c1ae8d300a96e6a06aa1507d90a0b",
+      "message1": "6d3de9247184bbba962d5507682c582246e4827e1a02f48105ed60894719f22376238b92d5009689498e2a4ef39bc314"
+    }
+  ]
+}
