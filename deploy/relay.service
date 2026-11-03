@@ -9,9 +9,6 @@ User=relay
 Group=relay
 ExecStart=/srv/relay/relay
 Environment=RELAY_ADDR=127.0.0.1:8010
-# v0 is opt-in. The public relay keeps it for the migration; a new relay
-# needs only v1 and should leave this unset.
-Environment=RELAY_V0=on
 # systemd creates /var/lib/relay owned by the service user, 0700.
 StateDirectory=relay
 StateDirectoryMode=0700
