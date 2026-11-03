@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
+import { equalBytes } from "../src/bytes.js";
 import { Guest, Host, Relay, RelayError, fileStore } from "../src/index.js";
 import { HostileProxy } from "../test-support/hostile.js";
 import { GuestInbox, HostInbox, sendUntil, unpairAll, waitUntil } from "../test-support/inbox.js";
@@ -65,9 +66,15 @@ for (const action of FAULTS) {
       );
 
       const sent = ["sync", "one", "two", "after"].map((text) => encoder.encode(text));
-      const same = (message) => sent.some((candidate) => candidate.length === message.length && candidate.every((byte, index) => byte === message[index]));
-      assert.ok(received.messages.every(([, message]) => same(message)), "a changed message reached the host");
-      assert.ok(replies.messages.every((message) => same(message)), "a changed message reached the guest");
+      const same = (message) => sent.some((candidate) => equalBytes(candidate, message));
+      assert.ok(
+        received.messages.every(([, message]) => same(message)),
+        "a changed message reached the host",
+      );
+      assert.ok(
+        replies.messages.every((message) => same(message)),
+        "a changed message reached the guest",
+      );
       assert.ok(received.has(encoder.encode("after")) && replies.has(encoder.encode("after")));
     } finally {
       if (guest !== undefined) {

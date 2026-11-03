@@ -1,5 +1,6 @@
 /** Small helpers the end-to-end and hostile-relay tests share. */
 
+import { equalBytes } from "../src/bytes.js";
 import { RelayError } from "../src/errors.js";
 
 /** Collects what `for await (const [device, message] of host)` yields. */
@@ -19,7 +20,7 @@ export class HostInbox {
   }
 
   has(message) {
-    return this.messages.some(([, received]) => sameBytes(received, message));
+    return this.messages.some(([, received]) => equalBytes(received, message));
   }
 }
 
@@ -40,12 +41,8 @@ export class GuestInbox {
   }
 
   has(message) {
-    return this.messages.some((received) => sameBytes(received, message));
+    return this.messages.some((received) => equalBytes(received, message));
   }
-}
-
-function sameBytes(left, right) {
-  return left.length === right.length && left.every((byte, index) => byte === right[index]);
 }
 
 /** Poll until `predicate` holds, so a test reads like the Python suite's. */

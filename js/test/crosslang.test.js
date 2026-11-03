@@ -22,7 +22,8 @@ const UV = spawnSync("uv", ["--version"], { encoding: "utf8" }).status === 0;
 
 /** One Python side, spoken to in JSON lines over stdin and stdout. */
 function startPartner(...args) {
-  const child = spawn("uv", ["run", "--project", join(ROOT, "py"), "--group", "test", "python", SCRIPT, ...args], {
+  const command = ["run", "--project", join(ROOT, "py"), "--group", "test", "python", SCRIPT];
+  const child = spawn("uv", [...command, ...args], {
     cwd: ROOT,
     stdio: ["pipe", "pipe", "pipe"],
   });

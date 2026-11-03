@@ -72,7 +72,9 @@ async function checkHandshake(vector, pattern, first, psk) {
   const guestSession = await Session.initiator(guest);
   const hostSession = await Session.responder(host);
   const detail = vector.fragmented_message;
-  const big = detail ? Uint8Array.from({ length: detail.length }, (_, index) => index % 251) : new Uint8Array(0);
+  const big = detail
+    ? Uint8Array.from({ length: detail.length }, (_, index) => index % 251)
+    : new Uint8Array(0);
   const fragmentPositions = detail ? detail.frames : [];
   let bigFrames = [];
   for (const [index, item] of vector.transport.entries()) {

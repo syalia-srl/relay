@@ -68,7 +68,6 @@ class Channel {
     this.session = null;
     this.candidate = null;
     this.socket = null;
-    this.task = null;
     this.stopped = false;
     this.stop = new AbortController();
   }
@@ -137,17 +136,16 @@ export class Pairing {
     this._dev = dev;
     this._name = name;
     this._psk = psk;
-    this.expires = expires;
+    this._expires = expires;
     this._payload = "";
-    this.channels = [];
-    this.pending = new Map();
-    this.unmatched = 0;
-    this.confirming = false;
-    this.bound = false;
-    this.boundKey = null;
-    this.ended = false;
-    this.expiryTimer = null;
-    this.deadlineTimer = null;
+    this._channels = [];
+    this._pending = new Map();
+    this._unmatched = 0;
+    this._confirming = false;
+    this._bound = false;
+    this._boundKey = null;
+    this._expiryTimer = null;
+    this._deadlineTimer = null;
   }
 
   /** The device id this pairing binds, to find it again with `host.pairing`. */
@@ -226,7 +224,7 @@ export class Host {
   /** The open pairing for `device`, so another request can confirm it. */
   pairing(device) {
     const pairing = this._pairings.get(device);
-    if (pairing === undefined || pairing.bound) throw new PairingFailed("the pairing has ended");
+    if (pairing === undefined || pairing._bound) throw new PairingFailed("the pairing has ended");
     return pairing;
   }
 
@@ -240,22 +238,22 @@ export class Host {
     const dev = randomHex(8);
     const psk = randomBytes(32);
     const pairing = new Pairing(this, dev, name, psk, Math.floor(Date.now() / 1000) + PAIRING_LIFETIME);
-    pairing.channels = await this._createChannels(dev, true);
-    if (pairing.channels.length === 0) throw new RelayError("no relay created a pairing channel");
+    pairing._channels = await this._createChannels(dev, true);
+    if (pairing._channels.length === 0) throw new RelayError("no relay created a pairing channel");
     this._pairings.set(dev, pairing);
-    for (const channel of pairing.channels) this._start(channel);
+    for (const channel of pairing._channels) this._start(channel);
     pairing._payload = new Payload({
       dev,
       hostPublic: this._static.publicKey,
       psk,
-      expires: pairing.expires,
-      relays: pairing.channels.map(
+      expires: pairing._expires,
+      relays: pairing._channels.map(
         (channel) => new RelayEntry(channel.url, channel.id, channel.guestToken),
       ),
     }).encode();
-    pairing.expiryTimer = setTimeout(() => {
+    pairing._expiryTimer = setTimeout(() => {
       this._expire(pairing).catch(() => {});
-    }, Math.max(0, pairing.expires * 1000 - Date.now()));
+    }, Math.max(0, pairing._expires * 1000 - Date.now()));
     return pairing;
   }
 
@@ -283,9 +281,8 @@ export class Host {
     this._closed = true;
     const ephemeral = [];
     for (const pairing of this._pairings.values()) {
-      pairing.ended = true;
-      this._cancel(pairing);
-      ephemeral.push(...pairing.channels);
+        this._cancel(pairing);
+      ephemeral.push(...pairing._channels);
     }
     this._pairings.clear();
     for (const channel of ephemeral) await this._stopChannel(channel);
@@ -305,20 +302,20 @@ export class Host {
   // -- pairing ----------------------------------------------------------
 
   async _confirm(pairing, code) {
-    if (this._pairings.get(pairing._dev) !== pairing || pairing.bound) {
+    if (this._pairings.get(pairing._dev) !== pairing || pairing._bound) {
       throw new PairingFailed("the pairing has ended");
     }
-    if (pairing.confirming) throw new PairingFailed("this pairing is already being confirmed");
+    if (pairing._confirming) throw new PairingFailed("this pairing is already being confirmed");
     // Typed text may hold anything; only the six ASCII digits can match a code.
     const typed = typeof code === "string" ? code.trim() : "";
-    const matches = [...pairing.pending.entries()]
+    const matches = [...pairing._pending.entries()]
       .filter(([, value]) => equalInConstantTime(value, typed))
       .map(([guest]) => guest);
     if (matches.length !== 1) {
       if (matches.length === 0) {
-        pairing.unmatched += 1;
-        if (pairing.unmatched < MAX_UNMATCHED_CODES) {
-          throw new WrongCode(MAX_UNMATCHED_CODES - pairing.unmatched);
+        pairing._unmatched += 1;
+        if (pairing._unmatched < MAX_UNMATCHED_CODES) {
+          throw new WrongCode(MAX_UNMATCHED_CODES - pairing._unmatched);
         }
       }
       await this._endPairing(pairing);
@@ -327,12 +324,12 @@ export class Host {
     }
 
     const guest = fromHex(matches[0]);
-    pairing.confirming = true;
+    pairing._confirming = true;
     let channels;
     try {
       channels = await this._createChannels(pairing._dev, false, guest);
     } finally {
-      pairing.confirming = false;
+      pairing._confirming = false;
     }
     if (this._pairings.get(pairing._dev) !== pairing) {
       await this._deleteChannels(channels);
@@ -346,15 +343,15 @@ export class Host {
     const device = new Device(this, pairing._dev, pairing._name, guest);
     device._channels = new Map(channels.map((channel) => [channel.id, channel]));
     this._devices.set(pairing._dev, device);
-    pairing.bound = true;
-    pairing.boundKey = guest;
-    pairing.pending.clear();
+    pairing._bound = true;
+    pairing._boundKey = guest;
+    pairing._pending.clear();
     pairing._psk = null;
-    if (pairing.expiryTimer !== null) clearTimeout(pairing.expiryTimer);
-    pairing.expiryTimer = null;
+    if (pairing._expiryTimer !== null) clearTimeout(pairing._expiryTimer);
+    pairing._expiryTimer = null;
 
     // PROTOCOL.md §5.5: forget the other pending keys and their sessions.
-    for (const channel of pairing.channels) {
+    for (const channel of pairing._channels) {
       channel.candidate = null;
       if (channel.guest === null || !equalBytes(channel.guest, guest)) {
         await this._abortChannel(channel);
@@ -362,11 +359,11 @@ export class Host {
     }
     await this._save();
     for (const channel of channels) this._start(channel);
-    pairing.deadlineTimer = setTimeout(() => {
+    pairing._deadlineTimer = setTimeout(() => {
       this._deadline(pairing).catch(() => {});
     }, CONFIRMATION_LIFETIME);
 
-    for (const channel of pairing.channels) {
+    for (const channel of pairing._channels) {
       if (channel.guest !== null && equalBytes(channel.guest, guest) && channel.session !== null) {
         await this._sendRelays(pairing, channel);
         break;
@@ -376,7 +373,7 @@ export class Host {
   }
 
   async _expire(pairing) {
-    if (this._pairings.get(pairing._dev) === pairing && !pairing.bound) {
+    if (this._pairings.get(pairing._dev) === pairing && !pairing._bound) {
       await this._endPairing(pairing);
     }
   }
@@ -391,10 +388,9 @@ export class Host {
   async _endPairing(pairing) {
     if (this._pairings.get(pairing._dev) !== pairing) return;
     this._pairings.delete(pairing._dev);
-    pairing.ended = true;
     this._cancel(pairing);
-    const channels = [...pairing.channels];
-    if (pairing.bound) {
+    const channels = [...pairing._channels];
+    if (pairing._bound) {
       const device = this._devices.get(pairing._dev);
       if (device !== undefined) {
         this._devices.delete(pairing._dev);
@@ -412,17 +408,16 @@ export class Host {
   async _finishPairing(pairing) {
     if (this._pairings.get(pairing._dev) !== pairing) return;
     this._pairings.delete(pairing._dev);
-    pairing.ended = true;
     this._cancel(pairing);
-    await this._stopChannels(pairing.channels);
-    await this._deleteChannels(pairing.channels);
+    await this._stopChannels(pairing._channels);
+    await this._deleteChannels(pairing._channels);
   }
 
   _cancel(pairing) {
-    if (pairing.expiryTimer !== null) clearTimeout(pairing.expiryTimer);
-    if (pairing.deadlineTimer !== null) clearTimeout(pairing.deadlineTimer);
-    pairing.expiryTimer = null;
-    pairing.deadlineTimer = null;
+    if (pairing._expiryTimer !== null) clearTimeout(pairing._expiryTimer);
+    if (pairing._deadlineTimer !== null) clearTimeout(pairing._deadlineTimer);
+    pairing._expiryTimer = null;
+    pairing._deadlineTimer = null;
   }
 
   async _removeDevice(dev) {
@@ -435,9 +430,8 @@ export class Host {
     const pairing = this._pairings.get(dev);
     if (pairing !== undefined) {
       this._pairings.delete(dev);
-      pairing.ended = true;
-      this._cancel(pairing);
-      channels.push(...pairing.channels);
+        this._cancel(pairing);
+      channels.push(...pairing._channels);
     }
     await this._save();
     await this._stopChannels(channels);
@@ -480,11 +474,11 @@ export class Host {
   }
 
   _start(channel) {
-    channel.task = this._runChannel(channel);
+    this._runChannel(channel);
   }
 
   _allChannels() {
-    const channels = [...this._pairings.values()].flatMap((pairing) => pairing.channels);
+    const channels = [...this._pairings.values()].flatMap((pairing) => pairing._channels);
     for (const device of this._devices.values()) channels.push(...device._channels.values());
     return channels;
   }
@@ -514,7 +508,7 @@ export class Host {
     if (channel.pairing) {
       const pairing = this._pairings.get(channel.dev);
       if (pairing !== undefined) {
-        pairing.channels = pairing.channels.filter((item) => item !== channel);
+        pairing._channels = pairing._channels.filter((item) => item !== channel);
       }
     } else {
       const device = this._devices.get(channel.dev);
@@ -650,10 +644,10 @@ export class Host {
     if (
       !channel.pairing ||
       pairing === undefined ||
-      pairing.bound ||
-      Date.now() > pairing.expires * 1000 ||
+      pairing._bound ||
+      Date.now() > pairing._expires * 1000 ||
       body.length !== 96 ||
-      pairing.pending.size >= MAX_PENDING
+      pairing._pending.size >= MAX_PENDING
     ) {
       await this._abort(channel, socket, true);
       return;
@@ -674,7 +668,7 @@ export class Host {
       return;
     }
     const guest = handshake.remoteStatic;
-    if (pairing.pending.has(toHex(guest))) {
+    if (pairing._pending.has(toHex(guest))) {
       await this._abort(channel, socket, true);
       return;
     }
@@ -699,9 +693,9 @@ export class Host {
         await this._abort(channel, socket, true);
         return;
       }
-      keys = pairing.bound
-        ? [pairing.boundKey]
-        : [...pairing.pending.keys()].map((guest) => fromHex(guest));
+      keys = pairing._bound
+        ? [pairing._boundKey]
+        : [...pairing._pending.keys()].map((guest) => fromHex(guest));
     } else {
       const device = this._devices.get(channel.dev);
       keys = device === undefined ? [] : [device._guest];
@@ -799,16 +793,16 @@ export class Host {
         return;
       }
       const guest = toHex(candidate.guest);
-      if (!pairing.bound) {
-        if (!pairing.pending.has(guest)) {
+      if (!pairing._bound) {
+        if (!pairing._pending.has(guest)) {
           // PROTOCOL.md §5.3: one pairing holds at most four pending keys.
-          if (pairing.pending.size >= MAX_PENDING || candidate.code === null) {
+          if (pairing._pending.size >= MAX_PENDING || candidate.code === null) {
             await this._abort(channel, socket, false);
             return;
           }
-          pairing.pending.set(guest, candidate.code);
+          pairing._pending.set(guest, candidate.code);
         }
-      } else if (pairing.boundKey !== null && equalBytes(candidate.guest, pairing.boundKey)) {
+      } else if (pairing._boundKey !== null && equalBytes(candidate.guest, pairing._boundKey)) {
         // PROTOCOL.md §5.5: the guest may have missed the list on the socket it
         // had at confirmation, so every promotion carries it.
         await this._sendRelays(pairing, channel);
@@ -824,7 +818,7 @@ export class Host {
     device._current = channel;
     device._condition.notifyAll();
     const pairing = this._pairings.get(channel.dev);
-    if (pairing !== undefined && pairing.bound) await this._finishPairing(pairing);
+    if (pairing !== undefined && pairing._bound) await this._finishPairing(pairing);
   }
 
   async _process(channel, socket, session, kind, message) {

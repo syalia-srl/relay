@@ -74,7 +74,6 @@ export class PairedHost {
     this._paused = new Map();
     this._inbox = new Queue(64);
     this._condition = new Condition();
-    this._task = null;
     this._expiryTimer = null;
     this._stopSignal = new AbortController();
   }
@@ -160,7 +159,7 @@ export class PairedHost {
   }
 
   _start() {
-    this._task = this._run();
+    this._run();
     if (this._expires !== null) {
       this._expiryTimer = setTimeout(
         () => {
