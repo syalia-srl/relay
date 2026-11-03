@@ -205,7 +205,8 @@ class PairedHost:
                         self._paused[entry.url] = time.time() + seconds_until_utc_midnight()
                     all_gone = False
                     continue
-                except (RelayError, ProtocolViolation, OSError):
+                except Exception:
+                    # Any other failure, a bug included, costs this attempt only.
                     all_gone = False
                     continue
                 established = True
@@ -216,7 +217,7 @@ class PairedHost:
                     pass
                 except _Done:
                     return
-                except (SocketClosed, RelayError, ProtocolViolation, OSError):
+                except Exception:
                     # PROTOCOL.md §8.2 step 3: a socket that closes goes back to step 1.
                     pass
                 finally:
@@ -308,7 +309,7 @@ class PairedHost:
                 continue
             try:
                 socket, session = await self._connect(entry)
-            except (ChannelGone, RelayError, ProtocolViolation, OSError):
+            except Exception:
                 continue
             return socket, session, earlier
         return None
@@ -317,7 +318,7 @@ class PairedHost:
         if not incoming:
             raise _Reconnect
         frame_type, body = incoming[0], incoming[1:]
-        if frame_type == ABORT:
+        if frame_type == ABORT and not body:
             raise _Reconnect
         if frame_type != TRANSPORT:
             await self._abort(socket)

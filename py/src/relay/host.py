@@ -398,10 +398,14 @@ class Host:
     async def _create_channels(self, dev: str, *, pairing: bool, guest: bytes | None = None) -> list[_Channel]:
         relays = self._usable()
         results = await asyncio.gather(*(create_channel(relay) for relay in relays), return_exceptions=True)
+        held = {channel.id for channel in self._all_channels()}
         channels = []
         for relay, result in zip(relays, results, strict=True):
-            if isinstance(result, BaseException):
+            # PROTOCOL.md §3.1: a channel id the host already holds, on any relay,
+            # is a failed creation.
+            if isinstance(result, BaseException) or result.channel in held:
                 continue
+            held.add(result.channel)
             channel = _Channel(
                 channel=result.channel,
                 url=relay.url,
@@ -500,7 +504,8 @@ class Host:
                     continue
                 await asyncio.sleep(backoff.next())
                 continue
-            except (RelayError, ProtocolViolation, OSError):
+            except Exception:
+                # Any other failure, a bug included, costs this attempt and not the channel.
                 await socket.close()
                 await asyncio.sleep(backoff.next())
                 continue
@@ -518,7 +523,8 @@ class Host:
                     return
                 if closed.code == 4429:
                     self._pause(channel.url)
-            except (RelayError, ProtocolViolation, OSError):
+            except Exception:
+                # Anything else ends this socket only; the channel reconnects.
                 pass
             finally:
                 channel.socket = None
@@ -549,7 +555,7 @@ class Host:
             await self._on_connect(channel, socket, body)
         elif frame_type == TRANSPORT:
             await self._on_transport(channel, socket, body)
-        elif frame_type == ABORT:
+        elif frame_type == ABORT and not body:
             channel.candidate = None
             self._drop_session(channel)
         else:
