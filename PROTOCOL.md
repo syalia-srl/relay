@@ -33,8 +33,8 @@ A channel id is 16 random bytes and a side token 32 random bytes, both encoded a
 base64url without padding (22 and 43 characters from `A-Z a-z 0-9 - _`). Wherever
 this document uses a channel id or a token, it means that text, not the decoded
 bytes. A relay MUST draw them from a cryptographically secure generator. A relay
-MUST NOT store tokens in clear: it stores their SHA-256 digests and compares digests
-in constant time. A relay MUST NOT log request lines, URLs or `Authorization`
+MUST NOT store tokens in clear: it stores their SHA-256 digests and finds a presented
+token by its digest, never by comparing it with stored tokens. A relay MUST NOT log request lines, URLs or `Authorization`
 headers.
 
 ### 2.2 Project keys
