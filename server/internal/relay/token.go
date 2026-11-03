@@ -23,7 +23,7 @@ const (
 	maxSubject   = 128
 )
 
-// The largest integer a JSON number may carry without losing its meaning.
+// The largest integer field PROTOCOL.md section 1 allows.
 const maxQuota = 1<<53 - 1
 
 // RelayToken is a verified rt1 token.
@@ -79,7 +79,7 @@ func VerifyRelayToken(raw string, issuers map[string]ed25519.PublicKey, relayID 
 	if t.Sub, ok = textField(obj, "sub", maxSubject); !ok {
 		return nil, errMalformed
 	}
-	if t.Exp, ok = intField(obj, "exp", 0, 1<<62); !ok {
+	if t.Exp, ok = intField(obj, "exp", 0, maxQuota); !ok {
 		return nil, errMalformed
 	}
 	if t.Channels, ok = intField(obj, "channels", 0, maxQuota); !ok {

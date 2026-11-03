@@ -1,6 +1,7 @@
 # AGENTS.md — relay
 
-Dumb E2E-encrypted message relay for AInBox Mobile.
+The relay of `PROTOCOL.md`: two-sided channels that carry end-to-end encrypted frames
+it cannot read. AInBox is its first user.
 
 ## What it is
 
@@ -47,10 +48,12 @@ closes the sockets with 1001 and saves the store.
     {"relay_id": "relay.example",
      "issuers": {"<iss>": "<hex Ed25519 public key>"},
      "keys": [{"id": "<label>", "sha256": "<hex sha256 of the operator key>",
-               "channels": 64, "creates_per_minute": 10, "bytes_per_day": 200000000}]}
+               "channels": 64, "creates_per_minute": 10, "bytes_per_day": 200000000},
+              {"id": "local", "sha256": "<hex>", "unlimited": true}]}
 
-A key with all three limits at 0 has no limits, for an install's own relay. A
-missing file refuses every v1 key, which is the safe default.
+A limit of 0 allows nothing, for keys and relay tokens alike; only `"unlimited": true`
+lifts the limits, for an install's own relay. A missing file refuses every v1 key,
+which is the safe default.
 
 ## Test
 

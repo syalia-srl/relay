@@ -14,14 +14,16 @@ import (
 	"time"
 )
 
-// KeySpec is one operator key in the keys file. All three limits at zero mean
-// no limits, for a relay an install runs for itself.
+// KeySpec is one operator key in the keys file. A limit of zero allows
+// nothing; only "unlimited" lifts the limits, for a relay an install runs for
+// itself.
 type KeySpec struct {
 	ID               string `json:"id"`
 	SHA256           string `json:"sha256"`
 	Channels         int64  `json:"channels"`
 	CreatesPerMinute int64  `json:"creates_per_minute"`
 	BytesPerDay      int64  `json:"bytes_per_day"`
+	Unlimited        bool   `json:"unlimited"`
 }
 
 // Keys is the file RELAY_KEYS_PATH points at, read at start and on SIGHUP.
@@ -45,6 +47,7 @@ type KeyInfo struct {
 	Channels         int64
 	CreatesPerMinute int64
 	BytesPerDay      int64
+	Unlimited        bool
 }
 
 // LoadKeys reads and validates the keys file. A missing or unreadable file is
@@ -111,6 +114,7 @@ func (k *Keys) Lookup(raw string, now time.Time) (KeyInfo, bool) {
 				Channels:         entry.spec.Channels,
 				CreatesPerMinute: entry.spec.CreatesPerMinute,
 				BytesPerDay:      entry.spec.BytesPerDay,
+				Unlimited:        entry.spec.Unlimited,
 			}, true
 		}
 	}
@@ -140,8 +144,8 @@ func NewQuotas() *Quotas {
 	}
 }
 
-// rollover forgets yesterday's byte counts at 00:00 UTC, which also lifts the
-// 4429 refusal.
+// rollover forgets yesterday's counts at 00:00 UTC, which also lifts the 4429
+// refusal and drops the creation logs of keys that went quiet.
 func (q *Quotas) rollover(now int64) {
 	day := now / 86400
 	if day == q.day {
@@ -149,6 +153,7 @@ func (q *Quotas) rollover(now int64) {
 	}
 	q.day = day
 	q.bytes = make(map[string]int64)
+	q.creates = make(map[string][]int64)
 }
 
 // Take records a creation if the key is still under its per-minute limit and
@@ -157,9 +162,8 @@ func (q *Quotas) Take(key string, limit int64, now int64) (int, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.rollover(now)
-	if limit <= 0 {
-		q.creates[key] = append(q.creates[key], now)
-		return 0, true
+	if limit == 0 {
+		return 60, false
 	}
 	window := q.creates[key]
 	cut := now - 60

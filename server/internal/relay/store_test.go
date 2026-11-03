@@ -22,14 +22,14 @@ func TestLoadsThePythonStateFile(t *testing.T) {
 		t.Fatalf("loaded %d channels, want 2", store.Len())
 	}
 	ch, side, ok := store.ByToken(digestOf(strings.Repeat("11", 32)))
-	if !ok || ch.ID != strings.Repeat("aa", 32) || side != sideA {
+	if !ok || ch.ID != strings.Repeat("aa", 32) || side != guest {
 		t.Fatalf("mobile token did not resolve: %+v %d %v", ch, side, ok)
 	}
 	if !ch.MobileSeen || ch.CreatedAt != 1762000000.5 || ch.LastSeen != 1762100000.25 {
 		t.Fatalf("row fields lost: %+v", ch)
 	}
 	_, side, ok = store.ByToken(digestOf(strings.Repeat("22", 32)))
-	if !ok || side != sideB {
+	if !ok || side != host {
 		t.Fatalf("bridge token did not resolve to the bridge slot: %d %v", side, ok)
 	}
 	unpaired, _, ok := store.ByToken(digestOf(strings.Repeat("33", 32)))
@@ -41,7 +41,10 @@ func TestLoadsThePythonStateFile(t *testing.T) {
 func TestTheStoreFileHoldsNoTokenAndIsPrivate(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "channels.json")
 	store := NewStore(path)
-	ch, mobile, bridge := store.Create(0, "", [3]int64{})
+	ch, bridge, mobile, err := store.Create(0, KeyInfo{}, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -65,31 +68,34 @@ func TestTheStoreFileHoldsNoTokenAndIsPrivate(t *testing.T) {
 func TestV1ChannelsSurviveARestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "channels.json")
 	store := NewStore(path)
-	ch, host, guest := store.Create(1, "sha256:abc", [3]int64{3, 4, 5})
+	ch, hostToken, guestToken, err := store.Create(1, KeyInfo{ID: "sha256:abc", Channels: 3, BytesPerDay: 5}, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
 	after := NewStore(path)
-	got, side, ok := after.ByToken(digestOf(host))
-	if !ok || got.ID != ch.ID || side != sideA {
+	got, side, ok := after.ByToken(digestOf(hostToken))
+	if !ok || got.ID != ch.ID || side != host {
 		t.Fatal("the host token did not survive a restart")
 	}
-	if got.V != 1 || got.Key != "sha256:abc" || got.LimitChannels != 3 || got.LimitCreates != 4 || got.LimitBytes != 5 {
+	if got.V != 1 || got.Key != "sha256:abc" || got.LimitBytes != 5 || got.Unlimited {
 		t.Fatalf("v1 row lost its fields: %+v", got)
 	}
-	if _, _, ok := after.ByToken(digestOf(guest)); !ok {
+	if _, _, ok := after.ByToken(digestOf(guestToken)); !ok {
 		t.Fatal("the guest token did not survive a restart")
 	}
 }
 
 func TestTokenShapes(t *testing.T) {
 	store := NewStore("")
-	v1, host, guest := store.Create(1, "", [3]int64{})
-	if len(v1.ID) != 22 || len(host) != 43 || len(guest) != 43 {
-		t.Fatalf("v1 id and tokens are %d/%d/%d characters", len(v1.ID), len(host), len(guest))
+	v1, hostToken, guestToken, _ := store.Create(1, KeyInfo{}, 100)
+	if len(v1.ID) != 22 || len(hostToken) != 43 || len(guestToken) != 43 {
+		t.Fatalf("v1 id and tokens are %d/%d/%d characters", len(v1.ID), len(hostToken), len(guestToken))
 	}
-	v0, mobile, bridge := store.Create(0, "", [3]int64{})
+	v0, bridge, mobile, _ := store.Create(0, KeyInfo{}, 100)
 	if len(v0.ID) != 64 || len(mobile) != 64 || len(bridge) != 64 {
 		t.Fatalf("v0 id and tokens are %d/%d/%d characters", len(v0.ID), len(mobile), len(bridge))
 	}
-	for _, s := range []string{v1.ID, host, guest} {
+	for _, s := range []string{v1.ID, hostToken, guestToken} {
 		if strings.ContainsAny(s, "=+/") {
 			t.Fatalf("%q is not unpadded base64url", s)
 		}
@@ -99,10 +105,10 @@ func TestTokenShapes(t *testing.T) {
 func TestGCTakesOnlyUnclaimedAndAbandonedChannels(t *testing.T) {
 	store := NewStore("")
 	now := float64(time.Now().Unix())
-	unclaimed, _, _ := store.Create(0, "", [3]int64{})
-	fresh, _, _ := store.Create(1, "", [3]int64{})
-	abandoned, _, _ := store.Create(0, "", [3]int64{})
-	live, liveHost, _ := store.Create(1, "", [3]int64{})
+	unclaimed, _, _, _ := store.Create(0, KeyInfo{}, 100)
+	fresh, _, _, _ := store.Create(1, KeyInfo{}, 100)
+	abandoned, _, _, _ := store.Create(0, KeyInfo{}, 100)
+	live, liveHost, _, _ := store.Create(1, KeyInfo{}, 100)
 
 	unclaimed.CreatedAt = now - GuestTTL - 1
 	abandoned.MobileSeen = true
@@ -111,7 +117,7 @@ func TestGCTakesOnlyUnclaimedAndAbandonedChannels(t *testing.T) {
 	live.CreatedAt = now - IdleTTL - 1
 	live.LastSeen = now - IdleTTL - 1
 	// A connected channel stays however old it is.
-	live.conns[sideA] = &wsConn{}
+	live.conns[host] = &wsConn{}
 
 	if gone := store.GC(now); gone != 2 {
 		t.Fatalf("swept %d channels, want 2", gone)
@@ -130,7 +136,7 @@ func TestGCTakesOnlyUnclaimedAndAbandonedChannels(t *testing.T) {
 func TestUnwritableStoreKeepsChannelsInMemory(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing-dir", "channels.json")
 	store := NewStore(path)
-	ch, _, _ := store.Create(1, "", [3]int64{})
+	ch, _, _, _ := store.Create(1, KeyInfo{}, 100)
 	if store.Get(ch.ID) == nil {
 		t.Fatal("an unwritable store lost its channel")
 	}
@@ -154,6 +160,9 @@ func TestQuotasRefuseAndRecover(t *testing.T) {
 	}
 	if _, ok := q.Take("k", 2, now+61); !ok {
 		t.Fatal("the window did not free a slot")
+	}
+	if _, ok := q.Take("frozen", 0, now); ok {
+		t.Fatal("a key with creates_per_minute 0 created a channel")
 	}
 	if used := q.AddBytes("other", 10, now); used != 10 {
 		t.Fatalf("byte count %d", used)
@@ -188,8 +197,8 @@ func TestLoadsAStateFileWithUnknownRows(t *testing.T) {
 func TestSavedFileKeepsBothKindsOfRow(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "channels.json")
 	store := NewStore(path)
-	v0, _, _ := store.Create(0, "", [3]int64{})
-	v1, _, _ := store.Create(1, "sha256:def", [3]int64{})
+	v0, _, _, _ := store.Create(0, KeyInfo{}, 100)
+	v1, _, _, _ := store.Create(1, KeyInfo{ID: "sha256:def", Unlimited: true}, 100)
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -216,5 +225,24 @@ func TestSavedFileKeepsBothKindsOfRow(t *testing.T) {
 	row := rows[v1.ID]
 	if row["v"] != float64(1) || row["key"] != "sha256:def" || row["hash_host"] == nil {
 		t.Fatalf("the v1 row is missing its fields: %+v", row)
+	}
+}
+
+func TestCreateHoldsTheKeyQuotaAndTheCapacity(t *testing.T) {
+	store := NewStore("")
+	key := KeyInfo{ID: "k", Channels: 2}
+	for i := 0; i < 2; i++ {
+		if _, _, _, err := store.Create(1, key, 100); err != nil {
+			t.Fatalf("creation %d refused: %v", i, err)
+		}
+	}
+	if _, _, _, err := store.Create(1, key, 100); err != errQuota {
+		t.Fatalf("a third channel for a key with channels 2: %v", err)
+	}
+	if _, _, _, err := store.Create(1, KeyInfo{ID: "zero"}, 100); err != errQuota {
+		t.Fatalf("a key with channels 0 created a channel: %v", err)
+	}
+	if _, _, _, err := store.Create(1, KeyInfo{ID: "local", Unlimited: true}, 2); err != errFull {
+		t.Fatalf("an unlimited key went past the relay's capacity: %v", err)
 	}
 }

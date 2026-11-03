@@ -12,9 +12,11 @@ import (
 func TestOperatorKeysComeFromTheFile(t *testing.T) {
 	key := "the-operator-key"
 	sum := sha256.Sum256([]byte(key))
+	local := sha256.Sum256([]byte("the-local-key"))
 	path := filepath.Join(t.TempDir(), "keys.json")
 	body := `{"relay_id":"relay.example","issuers":{},"keys":[
-		{"id":"local","sha256":"` + hex.EncodeToString(sum[:]) + `","channels":7,"creates_per_minute":8,"bytes_per_day":9}
+		{"id":"office","sha256":"` + hex.EncodeToString(sum[:]) + `","channels":7,"creates_per_minute":8,"bytes_per_day":9},
+		{"id":"local","sha256":"` + hex.EncodeToString(local[:]) + `","unlimited":true}
 	]}`
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
@@ -29,6 +31,12 @@ func TestOperatorKeysComeFromTheFile(t *testing.T) {
 	}
 	if info.Channels != 7 || info.CreatesPerMinute != 8 || info.BytesPerDay != 9 {
 		t.Fatalf("the key lost its quota: %+v", info)
+	}
+	if info.Unlimited {
+		t.Fatal("a key with limits came back unlimited")
+	}
+	if info, ok := keys.Lookup("the-local-key", time.Now()); !ok || !info.Unlimited {
+		t.Fatalf("the unlimited key: %+v %v", info, ok)
 	}
 	if info.ID != "sha256:"+hex.EncodeToString(sum[:]) {
 		t.Fatalf("the key id is %q", info.ID)

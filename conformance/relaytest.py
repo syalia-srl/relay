@@ -45,14 +45,8 @@ def keys_file(keys: list[dict] | None = None) -> dict:
                 "creates_per_minute": 1000,
                 "bytes_per_day": 100_000_000,
             },
-            # All limits zero: an install's own relay.
-            {
-                "id": "local",
-                "sha256": sha256_hex(LOCAL_KEY),
-                "channels": 0,
-                "creates_per_minute": 0,
-                "bytes_per_day": 0,
-            },
+            # An install's own relay.
+            {"id": "local", "sha256": sha256_hex(LOCAL_KEY), "unlimited": True},
         ]
     return {"relay_id": RELAY_ID, "issuers": {ISSUER: ISSUER_PUB}, "keys": keys}
 

@@ -50,8 +50,8 @@ func main() {
 		log.Print("shutting down")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		srv.Shutdown()        // close the sockets with 1001 and save the store
-		httpSrv.Shutdown(ctx) // then stop accepting
+		httpSrv.Shutdown(ctx) // stop accepting; upgraded sockets are not waited for
+		srv.Shutdown()        // so close them with 1001, then save the store
 		close(done)
 	}()
 

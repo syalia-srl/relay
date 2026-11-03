@@ -50,6 +50,17 @@ def test_a_key_without_limits_is_unlimited(make_relay):
         assert relay.create_v1(LOCAL_KEY).status_code == 201
 
 
+def test_a_quota_of_zero_allows_nothing(relay):
+    assert relay.create_v1(mint("frozen", channels=0)).status_code == 429
+    assert relay.create_v1(mint("frozen", creates_per_minute=0)).status_code == 429
+
+
+async def test_a_bytes_per_day_of_zero_refuses_auth(relay):
+    ch = relay.channel_v1(mint("mute", bytes_per_day=0))
+    async with v1_socket(relay, ch["channel"], ch["host_token"]) as ws:
+        await expect_close(ws, 4429)
+
+
 def test_a_relay_token_creates_a_channel(relay):
     assert relay.create_v1(mint("holder-1")).status_code == 201
 

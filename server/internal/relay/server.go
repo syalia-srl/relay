@@ -113,8 +113,7 @@ func New(cfg Config) (*Server, error) {
 	}
 	s.keys.Store(keys)
 	s.store.GC(float64(time.Now().Unix()))
-	log.Printf("relay %s, v0 %s, %d issuer(s), %d operator key(s)",
-		cfg.Addr, map[bool]string{true: "on", false: "off"}[cfg.V0], len(keys.Issuers), len(keys.Keys))
+	log.Printf("relay %s, v0 %t, %d issuer(s), %d operator key(s)", cfg.Addr, cfg.V0, len(keys.Issuers), len(keys.Keys))
 	return s, nil
 }
 
@@ -139,7 +138,7 @@ func (s *Server) Sweep() {
 
 // Shutdown closes the sockets and writes the store once more.
 func (s *Server) Shutdown() {
-	s.store.CloseAllNow(codeGoingAway, "")
+	s.store.CloseAll(codeGoingAway)
 	s.store.Save()
 }
 
@@ -167,25 +166,23 @@ func (s *Server) createV1(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Quota, before capacity. A held channel is what `channels` bounds.
-	if key.Channels > 0 && int64(s.store.Alive(key.ID)) >= key.Channels {
+	if !key.Unlimited {
+		if retry, ok := s.quotas.Take(key.ID, key.CreatesPerMinute, time.Now().Unix()); !ok {
+			w.Header().Set("Retry-After", strconv.Itoa(retry))
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+	}
+	ch, hostToken, guestToken, err := s.store.Create(1, key, s.cfg.MaxChannels)
+	switch {
+	case errors.Is(err, errQuota):
 		w.Header().Set("Retry-After", "60")
 		w.WriteHeader(http.StatusTooManyRequests)
 		return
-	}
-	retry, ok := s.quotas.Take(key.ID, key.CreatesPerMinute, time.Now().Unix())
-	if !ok {
-		w.Header().Set("Retry-After", strconv.Itoa(retry))
-		w.WriteHeader(http.StatusTooManyRequests)
-		return
-	}
-
-	if int64(s.store.Len()) >= s.cfg.MaxChannels {
+	case errors.Is(err, errFull):
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-
-	ch, hostToken, guestToken := s.store.Create(1, key.ID, [3]int64{key.Channels, key.CreatesPerMinute, key.BytesPerDay})
 	log.Printf("channel %s created", short(ch.ID))
 	writeJSON(w, http.StatusCreated, map[string]string{
 		"channel":     ch.ID,
@@ -199,7 +196,7 @@ func (s *Server) deleteV1(w http.ResponseWriter, r *http.Request) {
 	token := bearer(r)
 	if token != "" {
 		ch, side, ok := s.store.ByToken(sha256.Sum256([]byte(token)))
-		if ok && ch.V == 1 && ch.ID == id && side == sideA && s.store.Delete(id, codeDeleted) {
+		if ok && ch.V == 1 && ch.ID == id && side == host && s.store.Delete(id, codeDeleted) {
 			log.Printf("channel %s deleted", short(id))
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -253,7 +250,7 @@ func (s *Server) wsV1(w http.ResponseWriter, r *http.Request) {
 	}
 	// Authentication is settled; only now does quota speak, so a wrong token
 	// learns nothing about the channel it named.
-	if ch.LimitBytes > 0 && s.quotas.Used(ch.Key, time.Now().Unix()) > ch.LimitBytes {
+	if !ch.Unlimited && s.quotas.Used(ch.Key, time.Now().Unix()) >= ch.LimitBytes {
 		ws.close(codeOverQuota, "bytes_per_day")
 		return
 	}
@@ -261,7 +258,7 @@ func (s *Server) wsV1(w http.ResponseWriter, r *http.Request) {
 	old, other := s.store.Engraft(ch, side, ws)
 	if old != nil {
 		old.sendSystem("replaced")
-		old.close(codeReplaced, "replaced")
+		old.closeSoon(codeReplaced, "replaced")
 	}
 	ws.sendReady()
 	if other != nil {
@@ -281,7 +278,11 @@ func (s *Server) createV0(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
-	ch, mobile, bridge := s.store.Create(0, "", [3]int64{})
+	ch, bridge, mobile, err := s.store.Create(0, KeyInfo{}, s.cfg.MaxChannels)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
 	log.Printf("channel %s created", short(ch.ID))
 	writeJSON(w, http.StatusOK, map[string]string{
 		"channel_id":   ch.ID,
@@ -309,7 +310,7 @@ func (s *Server) wsV0(w http.ResponseWriter, r *http.Request) {
 
 	old, other := s.store.Engraft(ch, side, ws)
 	if old != nil {
-		old.close(codeReplaced, "replaced")
+		old.closeSoon(codeReplaced, "replaced")
 	}
 	if other != nil {
 		other.sendSystem("peer_connected")
@@ -350,8 +351,14 @@ func (s *Server) readLoop(ws *wsConn, conn *websocket.Conn, ch *Channel, side in
 				ws.close(codeTooLarge, "frame too large")
 				return
 			}
-		} else if typ != websocket.MessageBinary {
-			return
+		} else {
+			if typ != websocket.MessageBinary {
+				return
+			}
+			if len(data) > limit {
+				ws.close(int(websocket.StatusMessageTooBig), "message too big")
+				return
+			}
 		}
 		peer := s.store.Peer(ch, side)
 		if peer == nil {
@@ -360,11 +367,11 @@ func (s *Server) readLoop(ws *wsConn, conn *websocket.Conn, ch *Channel, side in
 		if err := peer.send(data); err != nil {
 			continue
 		}
-		if v1 && ch.Key != "" && ch.LimitBytes > 0 {
+		if v1 && !ch.Unlimited {
 			used := s.quotas.AddBytes(ch.Key, int64(len(data)), time.Now().Unix())
 			if used > ch.LimitBytes {
 				log.Printf("key over bytes_per_day; closing its channels")
-				s.store.CloseAll(codeOverQuota, ch.Key)
+				s.store.CloseKey(codeOverQuota, ch.Key)
 				return
 			}
 		}

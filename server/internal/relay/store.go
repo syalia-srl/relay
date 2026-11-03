@@ -5,17 +5,15 @@ package relay
 import (
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/coder/websocket"
 )
 
 // A channel whose guest never came is a QR nobody scanned: gone after an hour.
@@ -25,11 +23,11 @@ const GuestTTL = 3600
 // Long on purpose: an install switched off for a holiday must find it again.
 const IdleTTL = 30 * 24 * 3600
 
-// A channel has two slots. v0 calls them mobile and bridge, v1 host and guest;
-// the difference is only in the state file's field names.
+// A channel has two slots. v0 calls the host slot bridge and the guest slot
+// mobile; the difference is only in the state file's field names.
 const (
-	sideA = 0 // host (v1), mobile (v0)
-	sideB = 1 // guest (v1), bridge (v0)
+	host  = 0
+	guest = 1
 )
 
 // Channel is one row of the store. Its zero value in V means a v0 channel, so
@@ -48,60 +46,54 @@ type Channel struct {
 	Key       string `json:"key,omitempty"`
 	GuestSeen bool   `json:"guest_seen,omitempty"`
 
-	// The quota the creating key carried. Data frames carry no key of their
+	// The bytes_per_day of the creating key. Data frames carry no key of their
 	// own, so the limit that governs them has to travel with the channel.
-	LimitChannels int64 `json:"limit_channels,omitempty"`
-	LimitCreates  int64 `json:"limit_creates,omitempty"`
-	LimitBytes    int64 `json:"limit_bytes,omitempty"`
+	LimitBytes int64 `json:"limit_bytes,omitempty"`
+	Unlimited  bool  `json:"unlimited,omitempty"`
 
 	conns   [2]*wsConn
 	savedAt float64 // when this row last reached disk, to keep saves rare
 }
 
 func (ch *Channel) hash(side int) string {
-	if ch.V == 1 {
-		if side == sideA {
-			return ch.HashHost
-		}
+	switch {
+	case ch.V == 1 && side == host:
+		return ch.HashHost
+	case ch.V == 1:
 		return ch.HashGuest
-	}
-	if side == sideA {
+	case side == host:
+		return ch.HashBridge
+	default:
 		return ch.HashMobile
 	}
-	return ch.HashBridge
 }
 
-func (ch *Channel) seen(side int) bool {
-	if ch.V == 1 {
-		return ch.GuestSeen
-	}
-	return ch.MobileSeen
+func (ch *Channel) guestSeen() bool {
+	return ch.GuestSeen || ch.MobileSeen
 }
 
-func (ch *Channel) markSeen(side int) bool {
-	if ch.V == 1 {
-		if side == sideA || ch.GuestSeen {
-			return false
-		}
-		ch.GuestSeen = true
-		return true
-	}
-	if side == sideB || ch.MobileSeen {
+// markGuestSeen reports whether this is the first time, which is worth a save.
+func (ch *Channel) markGuestSeen() bool {
+	if ch.guestSeen() {
 		return false
 	}
-	ch.MobileSeen = true
+	if ch.V == 1 {
+		ch.GuestSeen = true
+	} else {
+		ch.MobileSeen = true
+	}
 	return true
 }
 
 type tokenRef struct {
-	ch     *Channel
-	side   int
-	digest [32]byte
+	ch   *Channel
+	side int
 }
 
 // Store keeps channels and their token digests. What reaches disk is the
 // channel id and a SHA-256 of each token, never a token: a copy of the file
-// opens no slot.
+// opens no slot. Tokens are found by digest, so no token is ever compared with
+// another, and nobody can choose a digest to probe the map with.
 type Store struct {
 	mu       sync.Mutex
 	path     string
@@ -154,18 +146,10 @@ func (s *Store) load() {
 
 func (s *Store) index(ch *Channel) {
 	s.channels[ch.ID] = ch
-	for _, side := range [2]int{sideA, sideB} {
-		h := ch.hash(side)
-		if h == "" {
-			continue
+	for _, side := range [2]int{host, guest} {
+		if digest, ok := parseDigest(ch.hash(side)); ok {
+			s.tokens[digest] = tokenRef{ch: ch, side: side}
 		}
-		digest, err := hex.DecodeString(h)
-		if err != nil || len(digest) != sha256.Size {
-			continue
-		}
-		var key [32]byte
-		copy(key[:], digest)
-		s.tokens[key] = tokenRef{ch: ch, side: side, digest: key}
 	}
 	if ch.Key != "" {
 		s.alive[ch.Key]++
@@ -174,13 +158,9 @@ func (s *Store) index(ch *Channel) {
 
 func (s *Store) drop(ch *Channel) {
 	delete(s.channels, ch.ID)
-	for _, side := range [2]int{sideA, sideB} {
-		if h := ch.hash(side); h != "" {
-			if digest, err := hex.DecodeString(h); err == nil && len(digest) == sha256.Size {
-				var key [32]byte
-				copy(key[:], digest)
-				delete(s.tokens, key)
-			}
+	for _, side := range [2]int{host, guest} {
+		if digest, ok := parseDigest(ch.hash(side)); ok {
+			delete(s.tokens, digest)
 		}
 	}
 	if ch.Key != "" {
@@ -259,71 +239,60 @@ func (s *Store) Len() int {
 	return len(s.channels)
 }
 
-// Alive reports how many live channels a key created.
-func (s *Store) Alive(key string) int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.alive[key]
-}
-
 func (s *Store) Get(id string) *Channel {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.channels[id]
 }
 
-// ByToken resolves a token digest to its channel and slot. The final compare
-// is constant time so two tokens do not get compared byte by byte.
+// ByToken resolves a token digest to its channel and slot.
 func (s *Store) ByToken(digest [32]byte) (*Channel, int, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	ref, ok := s.tokens[digest]
-	if !ok {
-		return nil, 0, false
-	}
-	if subtle.ConstantTimeCompare(ref.digest[:], digest[:]) != 1 {
-		return nil, 0, false
-	}
-	return ref.ch, ref.side, true
+	return ref.ch, ref.side, ok
 }
 
+var (
+	errQuota = errors.New("over the key's channels")
+	errFull  = errors.New("relay full")
+)
+
 // Create makes a channel and returns it with both plaintext tokens, which
-// exist only in the creating request's answer.
-func (s *Store) Create(v int, key string, limits [3]int64) (*Channel, string, string) {
-	var id, tokA, tokB string
+// exist only in the creating request's answer. The key's channel quota and the
+// relay's capacity are checked under the same lock that adds the channel, so
+// concurrent creations cannot overshoot either.
+func (s *Store) Create(v int, key KeyInfo, maxChannels int64) (ch *Channel, hostToken, guestToken string, err error) {
 	if v == 1 {
-		id, tokA, tokB = randomB64(16), randomB64(32), randomB64(32)
+		hostToken, guestToken = randomB64(32), randomB64(32)
 	} else {
 		// v0's ids and tokens are both 64 hex characters; keep them so a
 		// client that stored one keeps working.
-		id, tokA, tokB = randomHex(32), randomHex(32), randomHex(32)
+		hostToken, guestToken = randomHex(32), randomHex(32)
 	}
 	now := float64(time.Now().UnixNano()) / 1e9
-	ch := &Channel{
-		ID:            id,
-		CreatedAt:     now,
-		LastSeen:      now,
-		V:             v,
-		Key:           key,
-		LimitChannels: limits[0],
-		LimitCreates:  limits[1],
-		LimitBytes:    limits[2],
-	}
-	hashA, hashB := digestHex(tokA), digestHex(tokB)
+	ch = &Channel{CreatedAt: now, LastSeen: now, V: v, Key: key.ID, LimitBytes: key.BytesPerDay, Unlimited: key.Unlimited}
 	if v == 1 {
-		ch.HashHost, ch.HashGuest = hashA, hashB
+		ch.ID = randomB64(16)
+		ch.HashHost, ch.HashGuest = digestHex(hostToken), digestHex(guestToken)
 	} else {
-		ch.HashMobile, ch.HashBridge = hashA, hashB
+		ch.ID = randomHex(32)
+		ch.HashBridge, ch.HashMobile = digestHex(hostToken), digestHex(guestToken)
 	}
 	s.mu.Lock()
+	defer s.mu.Unlock()
+	if key.ID != "" && !key.Unlimited && int64(s.alive[key.ID]) >= key.Channels {
+		return nil, "", "", errQuota
+	}
+	if int64(len(s.channels)) >= maxChannels {
+		return nil, "", "", errFull
+	}
 	s.index(ch)
 	s.saveLocked()
-	s.mu.Unlock()
-	return ch, tokA, tokB
+	return ch, hostToken, guestToken, nil
 }
 
-// Delete removes a channel and closes both its sockets with code, without
-// waiting for their close handshakes.
+// Delete removes a channel and closes both its sockets with code.
 func (s *Store) Delete(id string, code int) bool {
 	s.mu.Lock()
 	ch := s.channels[id]
@@ -335,14 +304,15 @@ func (s *Store) Delete(id string, code int) bool {
 	ch.conns = [2]*wsConn{}
 	s.drop(ch)
 	s.saveLocked()
-	// Claim the sockets before the lock opens: their own read loops must not
-	// win the race with a normal 1000.
+	s.mu.Unlock()
+	// Outside the lock: claiming a socket can wait on a write in progress.
+	// Their read loops cannot close them first, since nothing ends a read
+	// but the close sent here or the client leaving.
 	for _, c := range conns {
 		if c != nil {
 			c.closeSoon(code, "deleted")
 		}
 	}
-	s.mu.Unlock()
 	return true
 }
 
@@ -352,10 +322,10 @@ func (s *Store) GC(now float64) int {
 	defer s.mu.Unlock()
 	gone := 0
 	for _, ch := range s.channels {
-		if ch.conns[sideA] != nil || ch.conns[sideB] != nil {
+		if ch.conns[host] != nil || ch.conns[guest] != nil {
 			continue // a connected channel always stays
 		}
-		old := now-ch.CreatedAt > GuestTTL && !ch.seen(sideB)
+		old := now-ch.CreatedAt > GuestTTL && !ch.guestSeen()
 		if old || now-ch.LastSeen > IdleTTL {
 			s.drop(ch)
 			gone++
@@ -376,7 +346,7 @@ func (s *Store) Engraft(ch *Channel, side int, conn *wsConn) (old *wsConn, other
 	ch.conns[side] = conn
 	ch.LastSeen = float64(time.Now().UnixNano()) / 1e9
 	other = ch.conns[1-side]
-	if ch.markSeen(side) {
+	if side == guest && ch.markGuestSeen() {
 		s.saveLocked()
 	}
 	return old, other
@@ -408,9 +378,10 @@ func (s *Store) Peer(ch *Channel, side int) *wsConn {
 	return ch.conns[1-side]
 }
 
-// CloseAll closes every socket with a code, for shutdown or a key over quota.
-func (s *Store) CloseAll(code int, onlyKey string) {
+// sockets lists the open sockets, of one key's channels or of all of them.
+func (s *Store) sockets(onlyKey string) []*wsConn {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	var conns []*wsConn
 	for _, ch := range s.channels {
 		if onlyKey != "" && ch.Key != onlyKey {
@@ -422,44 +393,39 @@ func (s *Store) CloseAll(code int, onlyKey string) {
 			}
 		}
 	}
-
-	for _, c := range conns {
-		c.closeSoon(code, "")
-	}
-	s.mu.Unlock()
+	return conns
 }
 
-// CloseAllNow closes every socket and waits for the close handshakes, for a
+// CloseKey closes the sockets of one key's channels, for a key over quota.
+func (s *Store) CloseKey(code int, key string) {
+	for _, c := range s.sockets(key) {
+		c.closeSoon(code, "")
+	}
+}
+
+// CloseAll closes every socket and waits for the close handshakes, for a
 // process that is about to exit.
-func (s *Store) CloseAllNow(code int, onlyKey string) {
-	s.mu.Lock()
-	var conns []*wsConn
-	for _, ch := range s.channels {
-		if onlyKey != "" && ch.Key != onlyKey {
-			continue
-		}
-		for _, c := range ch.conns {
-			if c != nil {
-				conns = append(conns, c)
-			}
-		}
-	}
-	claimed := conns[:0]
-	for _, c := range conns {
-		if c.claimClose() {
-			claimed = append(claimed, c)
-		}
-	}
-	s.mu.Unlock()
+func (s *Store) CloseAll(code int) {
 	var wg sync.WaitGroup
-	for _, c := range claimed {
+	for _, c := range s.sockets("") {
 		wg.Add(1)
-		go func(c *wsConn) {
+		go func() {
 			defer wg.Done()
-			c.conn.Close(websocket.StatusCode(code), "")
-		}(c)
+			c.close(code, "")
+		}()
 	}
 	wg.Wait()
+}
+
+// parseDigest reads a hex SHA-256 from the state file.
+func parseDigest(h string) ([32]byte, bool) {
+	var digest [32]byte
+	raw, err := hex.DecodeString(h)
+	if err != nil || len(raw) != sha256.Size {
+		return digest, false
+	}
+	copy(digest[:], raw)
+	return digest, true
 }
 
 func digestHex(token string) string {
