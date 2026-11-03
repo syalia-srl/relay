@@ -72,3 +72,43 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv run --python 3.12 --only-group vectors python vectors/tools/check_cacophony.py
       - run: uv run --python 3.12 --only-group vectors python -W ignore vectors/tools/generate.py --check
+  golib:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - run: CGO_ENABLED=0 go build -o relay ./cmd/relay
+        working-directory: server
+      - name: give the tests a private address for ws:// (PROTOCOL.md 8.1)
+        run: sudo ip addr add 10.255.0.1/32 dev lo
+      - run: go vet ./...
+        working-directory: go
+      - run: go test -race ./...
+        working-directory: go
+        env:
+          RELAY_BIN: ${{ github.workspace }}/server/relay
+          RELAY_TEST_ADDR: 10.255.0.1
+  matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - run: CGO_ENABLED=0 go build -o relay ./cmd/relay
+        working-directory: server
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: astral-sh/setup-uv@v5
+      - name: give the tests a private address for ws:// (PROTOCOL.md 8.1)
+        run: sudo ip addr add 10.255.0.1/32 dev lo
+      - run: go test -race -run TestCrossLanguageMatrix -v .
+        working-directory: go
+        env:
+          RELAY_BIN: ${{ github.workspace }}/server/relay
+          RELAY_TEST_ADDR: 10.255.0.1
