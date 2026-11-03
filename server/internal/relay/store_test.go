@@ -87,48 +87,65 @@ func TestV1ChannelsSurviveARestart(t *testing.T) {
 	}
 }
 
-func TestCreateDoesNotRewriteTheStoreUntilSaved(t *testing.T) {
+func TestCreateWritesAtOnceThenCoalesces(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "channels.json")
 	store := NewStore(path)
-	ch, hostToken, _, err := store.Create(1, KeyInfo{}, 100)
+	first, _, _, err := store.Create(1, KeyInfo{}, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Fatal("Create wrote the store before the next flush")
+	if got := NewStore(path).Len(); got != 1 {
+		t.Fatalf("the first creation is not on disk at once: %d channels", got)
 	}
-	store.Save()
-	after := NewStore(path)
-	if got, _, ok := after.ByToken(digestOf(hostToken)); !ok || got.ID != ch.ID {
-		t.Fatal("an explicit save did not persist the channel")
-	}
-}
-
-func TestDeleteIsCoalescedUntilSaved(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "channels.json")
-	store := NewStore(path)
-	ch, _, _, err := store.Create(1, KeyInfo{}, 100)
+	second, _, _, err := store.Create(1, KeyInfo{}, 100)
 	if err != nil {
 		t.Fatal(err)
-	}
-	store.Save()
-	if !store.Delete(ch.ID, codeDeleted) {
-		t.Fatal("the channel was not deleted")
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(raw), ch.ID) {
-		t.Fatal("Delete rewrote the store before the next flush")
+	if strings.Contains(string(raw), second.ID) {
+		t.Fatal("a second creation within a second rewrote the store")
 	}
+	if !store.SaveIfDirty() {
+		t.Fatal("the ticker's flush found nothing to write")
+	}
+	after := NewStore(path)
+	for _, ch := range []*Channel{first, second} {
+		if _, ok := after.channels[ch.ID]; !ok {
+			t.Fatalf("channel %s is not on disk after the flush", ch.ID)
+		}
+	}
+}
+
+func TestDeleteWritesAtOnceThenCoalesces(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "channels.json")
+	store := NewStore(path)
+	a, _, _, _ := store.Create(1, KeyInfo{}, 100)
+	b, _, _, _ := store.Create(1, KeyInfo{}, 100)
 	store.Save()
+	store.written = time.Time{}
+	if !store.Delete(a.ID, codeDeleted) || !store.Delete(b.ID, codeDeleted) {
+		t.Fatal("the channels were not deleted")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), a.ID) {
+		t.Fatal("the first delete did not reach disk at once")
+	}
+	if !strings.Contains(string(raw), b.ID) {
+		t.Fatal("a second delete within a second rewrote the store")
+	}
+	store.SaveIfDirty()
 	raw, err = os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(raw), ch.ID) {
-		t.Fatal("the deleted channel survived an explicit save")
+	if strings.Contains(string(raw), b.ID) {
+		t.Fatal("the ticker's flush did not write the second delete")
 	}
 }
 

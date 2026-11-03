@@ -101,7 +101,8 @@ type Store struct {
 	tokens   map[[32]byte]tokenRef
 	alive    map[string]int // channels still alive per key id
 	warned   sync.Once
-	dirty    bool // changes not yet written
+	dirty    bool      // changes not yet written
+	written  time.Time // when the store last reached disk
 }
 
 func NewStore(path string) *Store {
@@ -221,6 +222,18 @@ func (s *Store) saveLocked() {
 		return
 	}
 	s.dirty = false
+	s.written = time.Now()
+}
+
+// saveSoonLocked writes at once when the last write is a second old or more,
+// so a channel the relay just answered for is on disk in the normal case;
+// inside that second it leaves the change to the ticker, which bounds a burst
+// to one rewrite per second.
+func (s *Store) saveSoonLocked() {
+	s.dirty = true
+	if time.Since(s.written) >= time.Second {
+		s.saveLocked()
+	}
 }
 
 func (s *Store) warn() {
@@ -236,8 +249,8 @@ func (s *Store) Save() {
 	s.saveLocked()
 }
 
-// SaveIfDirty writes coalesced changes, if any. Creations and deletes only
-// mark the store, so a burst costs at most one rewrite per tick.
+// SaveIfDirty writes coalesced changes, if any: the second and later
+// creations or deletes of a burst, and the changes that only mark the store.
 func (s *Store) SaveIfDirty() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -303,7 +316,7 @@ func (s *Store) Create(v int, key KeyInfo, maxChannels int64) (ch *Channel, host
 		return nil, "", "", errFull
 	}
 	s.index(ch)
-	s.dirty = true
+	s.saveSoonLocked()
 	return ch, hostToken, guestToken, nil
 }
 
@@ -318,7 +331,7 @@ func (s *Store) Delete(id string, code int) bool {
 	conns := ch.conns
 	ch.conns = [2]*wsConn{}
 	s.drop(ch)
-	s.dirty = true
+	s.saveSoonLocked()
 	s.mu.Unlock()
 	// Outside the lock: claiming a socket can wait on a write in progress.
 	// Their read loops cannot close them first, since nothing ends a read
