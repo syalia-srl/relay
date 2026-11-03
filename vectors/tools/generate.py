@@ -112,6 +112,8 @@ URLS = [
     ("ws://relay.local", False),
     ("ws://relay.example", False),
     ("ws://localhost", False),
+    ("ws:10.0.0.1", False),
+    ("ws:/10.0.0.1", False),
     ("http://192.168.1.10", False),
     ("https://relay.example", False),
     ("wss://user:pass@relay.example", False),

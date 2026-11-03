@@ -31,7 +31,11 @@ export function urlAllowed(url) {
   if (parts.port !== "" && (Number(parts.port) < 1 || Number(parts.port) > 65535)) return false;
   if (parts.protocol === "wss:") return true;
   if (parts.protocol !== "ws:") return false;
-  const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i.exec(url)[1];
+  // WHATWG URL also parses ws:10.0.0.1 and ws:/10.0.0.1; §8.1 wants an
+  // absolute URL, so refuse anything without the authority marker.
+  const match = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]*)/i.exec(url);
+  if (match === null) return false;
+  const authority = match[1];
   const host = parts.hostname;
   if (!host.startsWith("[")) {
     const rawHost = authority.replace(/:\d*$/, "");
