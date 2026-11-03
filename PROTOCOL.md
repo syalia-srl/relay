@@ -118,7 +118,8 @@ guests' URL.
 `GET /v1/ws/{id}` opens a WebSocket for one side of a channel. The URL carries no
 token. The client's first frame MUST be a text frame holding a JSON object with a
 string field `auth`, the token, sent within 5 seconds of the socket opening; other
-fields are ignored. The token decides the side. If the channel is unknown, the token
+fields are ignored. The `auth` object follows section 1: a duplicate key makes the
+frame invalid. The token decides the side. If the channel is unknown, the token
 is not one of its two, the frame is not such a text frame, or 5 seconds pass, the
 relay closes with 4401. It uses 4401 for all these cases so that a client learns
 nothing about which channels exist, and checks authentication before quota.
@@ -254,6 +255,9 @@ an explicit intent), never through a relay.
 | `relays` | array | 1 to 16 relay entries, in the host's order of preference. |
 | `name` | string, optional | A display name for the host, at most 100 characters. |
 | `url` | string, optional | A host-defined URL, at most 2048 characters, for the host application's own use. |
+
+`name` and `url` are host-supplied text that arrives in a scanned QR code; an
+application that shows or opens them treats them as untrusted.
 
 A **relay entry**, here and in the `relays` control message, is an object with
 `url` (a relay base URL), `channel` (a channel id, section 2.1) and `token` (the
