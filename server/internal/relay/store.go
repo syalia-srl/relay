@@ -347,14 +347,13 @@ func (s *Store) GC(now float64) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	gone := 0
-	for id, ch := range s.channels {
+	for _, ch := range s.channels {
 		if ch.conns[sideA] != nil || ch.conns[sideB] != nil {
 			continue // a connected channel always stays
 		}
 		old := now-ch.CreatedAt > GuestTTL && !ch.seen(sideB)
 		if old || now-ch.LastSeen > IdleTTL {
 			s.drop(ch)
-			delete(s.channels, id)
 			gone++
 		}
 	}
