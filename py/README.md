@@ -11,9 +11,9 @@ internal.
 
 ## Install
 
-    pip install relay-channel
+    pip install ./py
 
-or, in this repository:
+or, to work on it:
 
     cd py
     uv sync --group test
