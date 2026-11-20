@@ -359,6 +359,7 @@ CGO_ENABLED=0 go build -o relay ./cmd/relay
 
 RELAY_ADDR=127.0.0.1:8010 \
 RELAY_STATE_PATH=/var/lib/relay/channels.json \
+RELAY_ROOMS_PATH=/var/lib/relay/rooms.db \
 RELAY_KEYS_PATH=/etc/relay/keys.json \
 ./relay</code></pre>
         <p style="margin-top:14px"><span lang="en">Or as a container: <code>docker build -t relay server/</code>, with <code>/data</code> as a volume. It belongs behind a TLS proxy, because guests accept plain <code>ws://</code> only to private addresses.</span><span lang="es">O como contenedor: <code>docker build -t relay server/</code>, con <code>/data</code> como volumen. Va detrás de un proxy con TLS, porque los guests solo aceptan <code>ws://</code> en claro hacia direcciones privadas.</span></p>

@@ -134,6 +134,11 @@ func (s *Server) ReloadKeys() error {
 	return nil
 }
 
+// Keys is the keys file in use, which SIGHUP may replace.
+func (s *Server) Keys() *Keys {
+	return s.keys.Load()
+}
+
 // Sweep forgets channels nobody claimed and channels abandoned for a month.
 func (s *Server) Sweep() {
 	if n := s.store.GC(float64(time.Now().Unix())); n > 0 {

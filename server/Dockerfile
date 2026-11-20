@@ -6,7 +6,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/relay ./cmd/relay
 # An empty /data already owned by the runtime user, so a fresh volume is
-# writable and the store survives a restart.
+# writable and the channel store and rooms database survive a restart.
 RUN mkdir -p /out/data && chown 65532:65532 /out/data
 
 FROM scratch
@@ -14,7 +14,8 @@ COPY --from=build /out/relay /relay
 COPY --from=build --chown=65532:65532 /out/data /data
 USER 65532:65532
 ENV RELAY_ADDR=0.0.0.0:8010 \
-    RELAY_STATE_PATH=/data/channels.json
+    RELAY_STATE_PATH=/data/channels.json \
+    RELAY_ROOMS_PATH=/data/rooms.db
 VOLUME ["/data"]
 EXPOSE 8010
 ENTRYPOINT ["/relay"]

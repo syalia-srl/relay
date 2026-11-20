@@ -29,6 +29,9 @@ ISSUER_PUB = ISSUER_KEY.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw
 
 OPERATOR_KEY = "operator-key-0123456789"
 LOCAL_KEY = "local-unlimited-key"
+# An operator key with a room quota (ROOMS.md 3.1), small enough to reach.
+ROOMS_KEY = "rooms-operator-key-0123"
+ROOM_QUOTA = {"max": 3, "stored_bytes": 200_000, "retention_days": 30, "blob_bytes": 20_000}
 
 
 def sha256_hex(text: str) -> str:
@@ -47,6 +50,14 @@ def keys_file(keys: list[dict] | None = None) -> dict:
             },
             # An install's own relay.
             {"id": "local", "sha256": sha256_hex(LOCAL_KEY), "unlimited": True},
+            {
+                "id": "rooms",
+                "sha256": sha256_hex(ROOMS_KEY),
+                "channels": 10,
+                "creates_per_minute": 10,
+                "bytes_per_day": 1_000_000,
+                "rooms": ROOM_QUOTA,
+            },
         ]
     return {"relay_id": RELAY_ID, "issuers": {ISSUER: ISSUER_PUB}, "keys": keys}
 
@@ -66,6 +77,7 @@ def mint(
     bytes_per_day: int = 100_000,
     key: Ed25519PrivateKey = ISSUER_KEY,
     payload: bytes | None = None,
+    extra: dict | None = None,
 ) -> str:
     """Mint an rt1 token the way an issuer would."""
     if exp is None:
@@ -80,6 +92,7 @@ def mint(
                 "channels": channels,
                 "creates_per_minute": creates_per_minute,
                 "bytes_per_day": bytes_per_day,
+                **(extra or {}),
             },
             separators=(",", ":"),
         ).encode()
@@ -102,6 +115,11 @@ class Relay:
         self.root.mkdir(parents=True, exist_ok=True)
         self.port = _free_port()
         self.state_path = self.root / "channels.json"
+        self.rooms_path = self.root / "rooms.db"
+        # RELAY_TEST_CLOCK: seconds added to the rooms clock, moved by advance().
+        self.clock_path = self.root / "clock"
+        self.offset = 0
+        self.clock_path.write_text("0")
         self.keys_path = self.root / "keys.json"
         self.keys_path.write_text(json.dumps(keys_file()))
         self.log_path = self.root / "relay.log"
@@ -116,6 +134,8 @@ class Relay:
                 "RELAY_ADDR": f"127.0.0.1:{self.port}",
                 "RELAY_STATE_PATH": str(self.state_path),
                 "RELAY_KEYS_PATH": str(self.keys_path),
+                "RELAY_ROOMS_PATH": str(self.rooms_path),
+                "RELAY_TEST_CLOCK": str(self.clock_path),
                 "RELAY_V0": "on",
             }
         )
@@ -160,6 +180,23 @@ class Relay:
     def restart(self) -> None:
         self.stop()
         self.start()
+
+    def now(self) -> int:
+        """The relay's rooms clock, in Unix seconds."""
+        return int(time.time()) + self.offset
+
+    def advance(self, seconds: int) -> None:
+        """Move the rooms clock forward; the next room request sweeps."""
+        self.offset += seconds
+        self.clock_path.write_text(str(self.offset))
+
+    def wait_for_log(self, text: str, count: int = 1, timeout: float = 5) -> None:
+        """Wait until the log holds text at least count times."""
+        deadline = time.monotonic() + timeout
+        while self.logs().count(text) < count:
+            if time.monotonic() > deadline:
+                raise AssertionError(f"{text!r} never logged {count} time(s):\n{self.logs()}")
+            time.sleep(0.02)
 
     def logs(self) -> str:
         try:

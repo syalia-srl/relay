@@ -1,5 +1,5 @@
 // Command relay is the E2E message relay: it creates channels and moves bytes
-// between their two sides.
+// between their two sides, and keeps the mailbox of rooms.
 package main
 
 import (
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/syalia-srl/relay/server/internal/relay"
+	"github.com/syalia-srl/relay/server/internal/rooms"
 )
 
 func main() {
@@ -25,9 +26,30 @@ func main() {
 		log.Fatalf("cannot start: %v", err)
 	}
 
+	mux := http.NewServeMux()
+	mux.Handle("/", srv.Handler())
+	roomsPath := os.Getenv("RELAY_ROOMS_PATH")
+	if roomsPath == "" {
+		roomsPath = "/data/rooms.db"
+	}
+	mailbox, err := rooms.Open(rooms.Config{
+		Path:           roomsPath,
+		TestClock:      os.Getenv("RELAY_TEST_CLOCK"),
+		MaxPendingAuth: cfg.MaxPendingAuth,
+	}, srv.Keys)
+	if err != nil {
+		// Channels keep working; every room route answers 503.
+		log.Printf("rooms store not writable; rooms are off: %v", err)
+		mux.Handle("/v1/rooms", rooms.Unavailable())
+		mux.Handle("/v1/rooms/", rooms.Unavailable())
+	} else {
+		mailbox.Register(mux)
+		mailbox.Sweep()
+	}
+
 	httpSrv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           srv.Handler(),
+		Handler:           mux,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -38,6 +60,8 @@ func main() {
 		for range hup {
 			if err := srv.ReloadKeys(); err != nil {
 				log.Printf("keys not reloaded: %v", err)
+			} else if mailbox != nil {
+				mailbox.Sweep() // an operator key that left makes its rooms read-only now
 			}
 		}
 	}()
@@ -52,6 +76,9 @@ func main() {
 		defer cancel()
 		httpSrv.Shutdown(ctx) // stop accepting; upgraded sockets are not waited for
 		srv.Shutdown()        // so close them with 1001, then save the store
+		if mailbox != nil {
+			mailbox.Close()
+		}
 		close(done)
 	}()
 
@@ -60,6 +87,9 @@ func main() {
 		defer ticker.Stop()
 		for range ticker.C {
 			srv.Sweep()
+			if mailbox != nil {
+				mailbox.Sweep()
+			}
 		}
 	}()
 

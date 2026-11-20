@@ -35,6 +35,7 @@ type RelayToken struct {
 	Channels      int64
 	CreatesPerMin int64
 	BytesPerDay   int64
+	Rooms         *RoomQuota
 }
 
 var errMalformed = errors.New("malformed relay token")
@@ -91,6 +92,7 @@ func VerifyRelayToken(raw string, issuers map[string]ed25519.PublicKey, relayID 
 	if t.BytesPerDay, ok = intField(obj, "bytes_per_day", 0, maxQuota); !ok {
 		return nil, errMalformed
 	}
+	t.Rooms = roomQuotaFrom(obj, "rooms", "room_stored_bytes", "room_retention_days", "room_blob_bytes")
 	if t.Aud != relayID || now.Unix() >= t.Exp {
 		return nil, errMalformed
 	}
