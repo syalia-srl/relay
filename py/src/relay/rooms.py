@@ -614,6 +614,11 @@ class Refused(Exception):
 # --- device keys (ROOMS.md 4.1, C3) ---
 
 
+def _require_p256(private: Any) -> None:
+    if not isinstance(private, ec.EllipticCurvePrivateKey) or not isinstance(private.curve, ec.SECP256R1):
+        raise ValueError("a device key must be a P-256 private key")
+
+
 class SignKey:
     """A signing key in the C3 shape: `sign_pub` (JWK) and `sign(bytes) -> 64 bytes r||s`.
 
@@ -623,6 +628,7 @@ class SignKey:
     __slots__ = ("sign_pub", "_sign_fn")
 
     def __init__(self, private: ec.EllipticCurvePrivateKey):
+        _require_p256(private)
         self.sign_pub = public_jwk(private)
 
         def sign(data: bytes) -> bytes:
@@ -644,6 +650,7 @@ class RecvKey:
     __slots__ = ("recv_pub", "_derive_fn")
 
     def __init__(self, private: ec.EllipticCurvePrivateKey):
+        _require_p256(private)
         self.recv_pub = public_jwk(private)
 
         def derive(peer_jwk: dict) -> bytes:

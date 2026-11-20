@@ -12,7 +12,10 @@ import threading
 import time
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric import ec
 from relay.rooms import (
+    RecvKey,
+    SignKey,
     Refused,
     RoomClient,
     RoomError,
@@ -364,3 +367,17 @@ def test_a_link_with_another_host_is_refused_before_any_call(relay: FakeRoomRela
         RoomMember.join("https://app.example/j#v1.Relay.example.x.y.z", sign_key=sign, recv_key=recv, base_url=relay.url)
     assert caught.value.code == "bad_link"
     assert relay.log == []
+
+
+@pytest.mark.parametrize("cls", [SignKey, RecvKey])
+@pytest.mark.parametrize("curve", [ec.SECP224R1, ec.SECP384R1])
+def test_device_keys_take_only_p256(cls, curve):
+    with pytest.raises(ValueError, match="P-256"):
+        cls(ec.generate_private_key(curve()))
+
+
+def test_device_keys_from_a_p256_private_key():
+    private = ec.generate_private_key(ec.SECP256R1())
+    sign_key, recv_key = SignKey(private), RecvKey(ec.generate_private_key(ec.SECP256R1()))
+    assert sign_key.sign_pub == public_jwk(private) and len(sign_key.sign(b"x")) == 64
+    assert len(recv_key.derive(sign_key.sign_pub)) == 32

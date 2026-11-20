@@ -132,6 +132,29 @@ Where the JavaScript `Room` differs (API shape only, the protocol is the same): 
 replays in `dropped` instead of returning them as `refused` with `replay`; and it makes
 a due epoch only in `send`, while `RoomMember.sync` makes it too.
 
+### Device keys
+
+`SignKey` and `RecvKey` are the library's own key objects in the C3 shape. A caller
+that keeps its device keys elsewhere (a PEM file, a key store it unwraps itself) builds
+them from a `cryptography` private key:
+
+```python
+from cryptography.hazmat.primitives.asymmetric import ec
+from relay.rooms import RecvKey, SignKey
+
+sign_key = SignKey(private)          # private: ec.EllipticCurvePrivateKey on P-256
+sign_key.sign_pub                    # the reduced public JWK
+sign_key.sign(data)                  # -> 64 bytes r||s, ECDSA P-256 over SHA-256(data)
+recv_key = RecvKey(private)          # another P-256 private key: one key per role
+recv_key.recv_pub                    # the reduced public JWK
+recv_key.derive(peer_jwk)            # -> the 32-byte raw ECDH secret with peer_jwk
+```
+
+Both constructors raise `ValueError` for a key on any other curve. Neither object
+exports its private key; the caller keeps the `cryptography` key it passed in, and
+`software_device_keys()` returns a fresh pair of them. Any object with the same
+attributes and methods can stand in for either, as `RoomMember` takes the C3 shape.
+
 ## Errors
 
 One base `RelayError`, with `PairingFailed`, `WrongCode`, `Revoked` and
