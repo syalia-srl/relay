@@ -9,3 +9,4 @@ export {
   Revoked,
   WrongCode,
 } from "./errors.js";
+export * as rooms from "./rooms/index.js";

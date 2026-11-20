@@ -187,7 +187,7 @@ POST /v1/rooms/{id}/join             Authorization: Bearer <join token>
 
 GET  /v1/rooms/{id}/roster?after=<n>  → {"entries": [{"n", "entry", "sig", "signer", "prev"}...]}
 POST /v1/rooms/{id}/roster           {"n", "entry", "sig", "prev"}       409 when n is not last+1
-POST /v1/rooms/{id}/epochs           {"n", "creator", "wraps": {device: wrap}, "sig"}   409 when n is not last+1
+POST /v1/rooms/{id}/epochs           {"n", "roster", "creator", "wraps": {device: wrap}, "sig"}   409 when n is not last+1
 GET  /v1/rooms/{id}/epochs?after=<n>
 POST /v1/rooms/{id}/owners           {"device": "<id>", "owner": true|false}
 DELETE /v1/rooms/{id}/devices/{device}
@@ -239,10 +239,11 @@ strings, and that the record is at most 64 KiB (413). Record 1 marks the room as
 up.
 
 **`POST /v1/rooms/{id}/epochs`** (a device, not the custodian) appends epoch `n`,
-which MUST be the last plus one (409 otherwise). `creator` MUST be the calling device's
-id (403 otherwise). `wraps` maps device ids to wraps; the relay does not check them.
-**`GET …/epochs?after=<n>`** returns `{"epochs": [{"n", "creator", "wraps", "sig"}...]}`
-in order.
+which MUST be the last plus one (409 otherwise). `roster` MUST be an integer of at
+least 0 (400 otherwise); the relay stores it as given and checks nothing else about it.
+`creator` MUST be the calling device's id (403 otherwise). `wraps` maps device ids to
+wraps; the relay does not check them. **`GET …/epochs?after=<n>`** returns
+`{"epochs": [{"n", "roster", "creator", "wraps", "sig"}...]}` in order.
 
 **`POST /v1/rooms/{id}/owners`** (an owner) sets the role of a device of the room in
 the relay's view: 204, 404 for an unknown or removed device, 409 when it would leave
@@ -405,7 +406,11 @@ closed. A record is valid when, after every record before it:
 A client MUST stop at the first record that is not valid: the records before it stand,
 that record and every later one are refused, and the client shows the room's roster as
 broken. It MUST check that the `room` of record 1 is the room it asked for. A pending
-or removed device signs nothing valid, gets no wraps and cannot post.
+or removed device signs no valid record and gets no wraps in an epoch made after it
+left. An epoch it makes is refused when it names a record where the device is not
+active, or a record before one that an accepted epoch with a lower `n` names (4.4). Its
+messages under an epoch it held before its removal can still arrive late if
+a relay delayed them (section 6).
 
 The `at` of a join is the joiner's claim. The relay enforces the real expiry when it
 takes the join token; the roster check only refuses a join that admits it came late.
@@ -434,9 +439,11 @@ for its own join, and the owner that appends a `remove` or `approve` creates it 
 that record. Any device that sees such a record not yet followed by an epoch MAY
 create one. No device sends with an epoch key that a device that has left holds.
 
-An epoch is `{"n", "creator", "wraps", "sig"}`. `wraps` maps the id of every active
-device of kind `device` in the creator's verified roster, the creator included, to a
-wrap of the epoch key for that device's receiving key:
+An epoch is `{"n", "roster", "creator", "wraps", "sig"}`. `roster` is the `n` of the
+last roster record the creator had verified when it made the epoch: a sender sets it to
+the length of its verified roster. `wraps` maps the id of every active device of kind
+`device` at that record, the creator included, to a wrap of the epoch key for that
+device's receiving key:
 
 1. Draw an ephemeral P-256 key pair and a 12-byte IV.
 2. `secret` = the raw ECDH secret of the ephemeral private key and the device's
@@ -447,17 +454,28 @@ wrap of the epoch key for that device's receiving key:
    epoch key)}` with no additional data.
 
 `sig` is the creator's signature over
-`{"v": "relay-epoch-1", "room", "n", "creator", "wraps"}`. A receiver accepts an epoch
-only when the roster's room is its room, `creator` is an active device of kind `device`
-in its verified roster, `sig` verifies with its key, and every device in `wraps` is an
-active device of kind `device` in that roster. When a wrap names a device it does not
-know, it first fetches the roster again, then refuses the epoch and shows it. A device
-opens its wrap with `derive(eph)`, the same HKDF, and AES-256-GCM.
+`{"v": "relay-epoch-1", "room", "n", "roster", "creator", "wraps"}`. A receiver accepts
+an epoch only when:
+
+1. the roster's room is its room;
+2. `roster` is an integer with 1 <= `roster` <= the length of its verified roster;
+3. `creator` and every device in `wraps` are active devices of kind `device` at record
+   `roster`, that is after replaying records 1 to `roster`, and `creator` is in `wraps`;
+4. `sig` verifies with the creator's key;
+5. `roster` is not lower than the `roster` of any epoch it accepted with a lower `n`:
+   it never decreases as `n` grows.
+
+When `roster` is beyond its verified roster or a wrap names a device it does not know,
+it first fetches the roster again, then refuses the epoch and shows it. Rule 5 is what
+keeps a removed device out: once a member has made an epoch after the `remove`, an
+epoch signed with the removed device's key must name a record before the removal, and
+is refused, even when a relay that holds that key posts it. A device opens its wrap
+with `derive(eph)`, the same HKDF, and AES-256-GCM.
 
 Two devices that create the same epoch number get one 201 and one 409. The loser
 fetches epochs and roster and creates the next epoch only if the new one does not cover
 what it needed. `vectors/rooms_epoch.json` gives an epoch with every intermediate value
-of its wraps, and epochs a receiver refuses.
+of its wraps, and epochs a receiver accepts or refuses, among them a removed device's.
 
 ### 4.5 Messages
 
@@ -584,7 +602,8 @@ refuse service; see how many devices a room has, when each one posts and fetches
 sizes, IP addresses, and the room id of every join. There is no padding and no cover
 traffic. It cannot read anything, add a device that members accept, forge or replay a
 message without a client noticing, or hide a dropped message for ever, since the
-sender's counter shows the gap.
+sender's counter shows the gap. A message a removed device sealed under an epoch from
+before its removal can still appear after the removal if a relay delayed it.
 
 ## 7. Versions
 
@@ -600,7 +619,7 @@ the labels of every signed object, key derivation and additional data (`relay-ro
 | `rooms_encoding.json` | 2 | Canonical JSON, signatures to accept and refuse, JWK reduction. |
 | `rooms_quota.json` | 3.1 | Room quotas from `keys.json` entries and `rt1` payloads; room limits for create requests. |
 | `rooms_roster.json` | 4.2 | A roster with every entry kind and the state it yields; rosters refused at a given record (bad signature, broken chain, dropped record, forged join, used-up, expired and closed invites, signers that may not sign, no owner left). |
-| `rooms_epoch.json` | 4.4 | An epoch with the ECDH secret, HKDF info, wrap key and IV of each wrap; epochs a receiver refuses. |
+| `rooms_epoch.json` | 4.4 | An epoch with the ECDH secret, HKDF info, wrap key and IV of each wrap; epochs a receiver accepts or refuses at a given roster length after given earlier epochs. |
 | `rooms_message.json` | 4.5 | Sealed messages with their additional data and signed JSON; refused messages; counter and gap cases. |
 | `rooms_blob.json` | 4.6 | Sealed blobs; bodies to refuse. |
 | `rooms_invite_link.json` | 5 | Links to accept with their parts, links to refuse. |
