@@ -127,6 +127,11 @@ a replay is `refused` with `replay`. `roster_error` holds a `RosterInvalid` when
 roster is broken; the records before it stand. An owner also has `RoomMember.create`
 (with a credential the caller holds), `invite`, `approve`, `remove` and `info`.
 
+Where the JavaScript `Room` differs (API shape only, the protocol is the same): its
+`sync` returns gaps in a separate `gaps` list instead of inline messages; it lists
+replays in `dropped` instead of returning them as `refused` with `replay`; and it makes
+a due epoch only in `send`, while `RoomMember.sync` makes it too.
+
 ## Errors
 
 One base `RelayError`, with `PairingFailed`, `WrongCode`, `Revoked` and
