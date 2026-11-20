@@ -506,8 +506,15 @@ func (s *Service) postMessage(tx *sql.Tx, c *call) (reply, error) {
 		}
 	}
 	// The socket hint goes out now; the fetch it prompts waits for this
-	// transaction, since the database has one connection. Push sending is a
-	// stub: no gateway is configured, so the relay sends nothing (ROOMS.md 3.7).
+	// transaction, since the database has one connection. Push tokens join the
+	// queue, sent at least 2 s later and never waited on (ROOMS.md 3.7).
+	if s.push != nil {
+		tokens, err := pushTokens(tx, c.room.id, c.device.id)
+		if err != nil {
+			return reply{}, err
+		}
+		s.push.add(tokens)
+	}
 	s.hub.notify(c.room.id, seq)
 	return reply{status: http.StatusCreated, body: map[string]int64{"seq": seq}}, nil
 }

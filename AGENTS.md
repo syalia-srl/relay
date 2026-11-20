@@ -9,11 +9,14 @@ The service behind the relay URL (port 8010 on its host). Creates channels (two-
 WebSocket pipes), forwards encrypted binary frames between slots, emits presence
 system events on connect/disconnect. Also keeps the rooms mailbox of `ROOMS.md`
 section 3 under `/v1/rooms`: rooms, devices, invites, roster records, epochs,
-ciphertext messages and blobs, and a notification socket.
+ciphertext messages and blobs, and a notification socket. Push is off by default; with
+it on, the relay sends push tokens to one configured gateway, and `server/cmd/pushgw`
+is that gateway (data-only FCM wake-ups).
 
 ## Stack
 
-Go 1.27, one static binary (`CGO_ENABLED=0`), the standard library plus
+Go 1.27, static binaries (`CGO_ENABLED=0`): `relay` and the push gateway `pushgw`,
+from the same module. The standard library plus
 `github.com/coder/websocket` and the pure-Go SQLite driver `modernc.org/sqlite`.
 The channel store is one JSON file (`RELAY_STATE_PATH`, default
 `/data/channels.json`) holding channel ids and the SHA-256 of each slot token, never a
@@ -49,7 +52,10 @@ route answers 503 and channels keep working.
     cd server && CGO_ENABLED=0 go build -o relay ./cmd/relay
     RELAY_ADDR=127.0.0.1:8010 RELAY_STATE_PATH=/tmp/channels.json RELAY_ROOMS_PATH=/tmp/rooms.db ./relay
 
-`RELAY_ADDR` defaults to `127.0.0.1:8010`. `SIGHUP` re-reads the keys file and sweeps
+    cd server && CGO_ENABLED=0 go build -o pushgw ./cmd/pushgw
+    PUSHGW_ADDR=127.0.0.1:8020 PUSHGW_KEYS_PATH=/tmp/pushgw-keys.json PUSHGW_FCM_CREDENTIALS=/tmp/fcm.json ./pushgw
+
+`RELAY_ADDR` defaults to `127.0.0.1:8010`, `PUSHGW_ADDR` to `127.0.0.1:8020`. `SIGHUP` re-reads the keys file and sweeps
 rooms, so an operator key that left makes its rooms read-only at once; `SIGTERM`
 closes the sockets with 1001 and saves the store. Rooms are swept every 5 minutes:
 retention, rooms never set up within an hour, rooms read-only for 30 days.
@@ -71,6 +77,36 @@ which is the safe default. A key creates rooms only with a `rooms` object
 relay token only with the `rooms`, `room_stored_bytes`, `room_retention_days` and
 `room_blob_bytes` fields.
 
+Push (`ROOMS.md` 3.7) is off unless `RELAY_PUSH_URL` is set. Turning push on sends
+the gateway's operator, for each wake-up, a device's push token and the time; never
+a room id, a sender or any content.
+
+- `RELAY_PUSH_URL`: the gateway's full endpoint (`https://push.example/v1/wake`);
+  https, or http to a loopback host for tests. The relay calls exactly this URL,
+  never one a device supplies, and follows no redirect.
+- `RELAY_PUSH_KEY_PATH`: a file (0600) with the gateway key. URL set and key
+  missing or unreadable: one log line, push off, everything else works.
+- The call is `POST`, Bearer gateway key, `{"tokens": [...]}` with 1 to 500 distinct
+  tokens of the room's other `device`-kind devices, sent 2 s after the first token
+  of a window. `200 {"invalid": [...]}` clears those tokens; 400 and 401 are not
+  retried; 429 waits `Retry-After` (at most 60 s); 5xx and network errors retry
+  after 1, 4 and 16 s, then the batch is dropped. 5 s timeout, at most 10,000
+  tokens queued, oldest dropped. `POST /messages` never waits on the gateway.
+
+The gateway reads `PUSHGW_KEYS_PATH` (`{"keys": [{"id", "sha256", "per_minute"}]}`,
+re-read on `SIGHUP`, a missing file refuses every key, above `per_minute` a 429 with
+`Retry-After`), `PUSHGW_FCM_CREDENTIALS` (the FCM service-account JSON, 0600; project
+id and `token_uri` come from it) and `PUSHGW_FCM_ENDPOINT` (overrides
+`https://fcm.googleapis.com`, for tests). It sends one data-only FCM v1 message per
+token, `{"token", "data": {"w": "1"}, "android": {"priority": "high"}}`, maps
+`UNREGISTERED` and `INVALID_ARGUMENT` to `invalid`, and answers 503 with
+`Retry-After` when FCM answers 429 or 5xx. Neither binary logs a token or the
+service account.
+
+`RELAY_TEST_PUSH_SCALE` is test-only and off unless set: a number that multiplies
+the 2 s push window and the 1, 4 and 16 s backoff (not `Retry-After`), so the suite
+tests batching and retries quickly. A production relay never sets it.
+
 `RELAY_TEST_CLOCK` is test-only and off unless set: it names a file holding a number
 of seconds added to the rooms clock, and makes the relay sweep rooms before every
 room request, so the conformance suite tests the 1-hour, 1-day, 14-day and 30-day
@@ -81,10 +117,14 @@ rules without waiting. A production relay never sets it.
     cd server && go vet ./... && go test ./...
     uv run --group conformance pytest conformance
 
-The conformance suite is black-box: it starts the binary named by `RELAY_BIN` on a
+The conformance suite is black-box: it starts the binaries named by `RELAY_BIN` and
+`PUSHGW_BIN` on a
 free port with a temporary state directory, rooms database, test clock and keys file.
 It covers the v0 behaviour, every v1 rule and the rooms mailbox
-(`conformance/test_rooms_*.py`). Go unit tests replay every case of
+(`conformance/test_rooms_*.py`), and push (`conformance/test_push_*.py`) against a
+fake gateway and a fake FCM and OAuth server on loopback, with a throwaway RSA key
+and service account generated per test. One case waits out a real 60 s
+`per_minute` window. Go unit tests replay every case of
 `vectors/relay_token.json` and `vectors/rooms_quota.json`.
 
 ## Deploy
@@ -101,6 +141,12 @@ in `/var/lib/relay` (systemd's `StateDirectory`) and its keys in `/etc/relay/key
 Check that a restart keeps channels and rooms: `channels.json` and `rooms.db` exist in the state directory
 at 0600 and survives a second restart. `server/Dockerfile` is the same service for a
 container host, with `/data` as the volume.
+
+The push gateway is `deploy/pushgw.service`: `/srv/pushgw/pushgw` on 127.0.0.1:8020
+behind the reverse proxy, keys in `/etc/pushgw/keys.json`, the service account in
+`/etc/pushgw/fcm.json`. Turning push on for a relay means uncommenting the two
+`RELAY_PUSH_*` lines in `relay.service` and allowing the gateway's address in its
+`IPAddressAllow`.
 
 ## Protocol
 

@@ -145,6 +145,12 @@ StateDirectoryMode=0700
 Environment=RELAY_STATE_PATH=/var/lib/relay/channels.json
 Environment=RELAY_ROOMS_PATH=/var/lib/relay/rooms.db
 Environment=RELAY_KEYS_PATH=/etc/relay/keys.json
+# Push (ROOMS.md 3.7) is off while RELAY_PUSH_URL is unset. Turning push on sends
+# the gateway's operator, for each wake-up, a device's push token and the time;
+# never a room id, a sender or any content. It also needs the gateway's address
+# in IPAddressAllow below.
+#Environment=RELAY_PUSH_URL=https://push.example/v1/wake
+#Environment=RELAY_PUSH_KEY_PATH=/etc/relay/push.key
 Restart=on-failure
 RestartSec=5
 
@@ -169,7 +175,7 @@ ProtectControlGroups=yes
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
 UMask=0077
-# The relay only listens on loopback and makes no outbound connection.
+# The relay listens on loopback and, with push off, makes no outbound connection.
 IPAddressDeny=any
 IPAddressAllow=localhost
 
@@ -197,7 +203,8 @@ mode `0700` on every start. `ProtectSystem=strict` makes the filesystem read-onl
 the service apart from the state directory and its private temporary directory. The
 keys file is readable by the service group and by nothing else.
 `IPAddressDeny=any` with `IPAddressAllow=localhost` limits the service to loopback
-addresses, and `UMask=0077` makes the files it creates readable only by the service.
+addresses, and `UMask=0077` makes the files it creates readable only by the service. With
+push on, the gateway's address joins `IPAddressAllow`.
 
 `systemctl status relay` shows the last log lines. `journalctl -u relay` shows all of
 them. A log line names at most the first eight characters of a channel id, and never
@@ -360,6 +367,59 @@ Anonymous v0 creation is rate limited by `RELAY_CREATE_BURST` and
 `RELAY_CREATE_PER_MINUTE`. v0 is off unless `RELAY_V0=on`, and a new relay never
 needs it. A v0 relay carries its slot tokens in the request line
 (`/ws/{id}?token=`), which a proxy access log records.
+
+## Push
+
+Push is off by default. With it on, when a room takes a message the relay sends the
+push tokens of the room's other devices to one push gateway, which wakes each phone
+through FCM; the phone then fetches as after a socket hint (`ROOMS.md` 3.7).
+
+Turning push on sends the gateway's operator, for each wake-up, a device's push token
+and the time; never a room id, a sender or any content.
+
+| Setting | Meaning |
+|---|---|
+| `RELAY_PUSH_URL` | The gateway's full endpoint, for example `https://push.example/v1/wake`. Unset or empty: push is off. It must be https; the relay calls exactly this URL, never one a device supplies, and does not follow redirects. |
+| `RELAY_PUSH_KEY_PATH` | A file (mode `0600`) holding the gateway key. With the URL set and this file missing or unreadable, the relay logs `push gateway key not readable; push is off` and everything else works. |
+
+Each call is `POST <RELAY_PUSH_URL>` with `Authorization: Bearer <gateway key>` and
+the body `{"tokens": [...]}`: 1 to 500 distinct tokens and nothing else. Tokens wait
+at most 2 seconds, so the messages of that window share one call; the sender's own
+token is never in it, nor the token of a custodian or a removed device. The gateway
+answers `200 {"invalid": [...]}`, and the relay clears those tokens as `PUT /push`
+with `null` does. A 400 or 401 is not retried; a 429 is retried after its
+`Retry-After` (at most 60 s); a 5xx or a network error is retried after 1, 4 and
+16 s, and then the batch is dropped, since the phone's periodic fetch covers it.
+Each call times out after 5 s, and at most 10,000 tokens wait, the oldest dropped
+first. Posting a message never waits on the gateway. The log carries counts and
+statuses, never a token.
+
+### The gateway
+
+`server/cmd/pushgw` is the gateway, a second static binary from the same module:
+
+```bash
+cd relay/server
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o pushgw ./cmd/pushgw
+```
+
+| Setting | Meaning |
+|---|---|
+| `PUSHGW_ADDR` | Listen address, default `127.0.0.1:8020`, behind the reverse proxy. |
+| `PUSHGW_KEYS_PATH` | `{"keys": [{"id": "<label>", "sha256": "<hex>", "per_minute": n}]}`: the SHA-256 of each relay's gateway key and its calls per minute. Re-read on `SIGHUP`; a missing file refuses every key (401). Above `per_minute` the gateway answers 429 with `Retry-After`. |
+| `PUSHGW_FCM_CREDENTIALS` | The FCM service-account JSON (mode `0600`). The project id and `token_uri` come from it. |
+| `PUSHGW_FCM_ENDPOINT` | Overrides `https://fcm.googleapis.com`; the test suite points it at a fake. |
+
+For each token the gateway sends one FCM HTTP v1 `messages:send` with
+`{"message": {"token": t, "data": {"w": "1"}, "android": {"priority": "high"}}}`: data
+only, with no notification block and no content. The access token is minted from the
+service account with an RS256 JWT bearer grant and cached until a minute before it
+expires. FCM's `UNREGISTERED` and `INVALID_ARGUMENT` put the token in `invalid`; an
+FCM 429 or 5xx makes the gateway answer 503 with `Retry-After` and mark no token
+invalid. No log line carries a token or the service account's contents.
+
+`deploy/pushgw.service` is its unit, in the same style as the relay's, with the keys
+in `/etc/pushgw/keys.json` and the service account in `/etc/pushgw/fcm.json`.
 
 ## The container
 

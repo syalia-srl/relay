@@ -47,6 +47,8 @@ type Config struct {
 	TestClock string
 	// MaxPendingAuth caps notification sockets that have not sent tokens.
 	MaxPendingAuth int64
+	// Push names the push gateway; its zero value leaves push off.
+	Push PushConfig
 }
 
 // Service serves /v1/rooms.
@@ -56,6 +58,7 @@ type Service struct {
 	now   Clock
 	test  bool
 	hub   *hub
+	push  *pusher
 	sweep sync.Mutex
 
 	pendingMu sync.Mutex
@@ -76,6 +79,7 @@ func Open(cfg Config, keys func() *relay.Keys) (*Service, error) {
 		s.test = true
 		log.Print("RELAY_TEST_CLOCK is set: the rooms clock is shifted and sweeps run on every request; never in production")
 	}
+	s.push = newPusher(cfg.Push, s.clearPush)
 	return s, nil
 }
 
@@ -96,6 +100,7 @@ func fileClock(path string) Clock {
 
 // Close closes the notification sockets with 1001 and the database.
 func (s *Service) Close() {
+	s.push.close()
 	s.hub.closeAll(1001)
 	s.db.Close()
 }
