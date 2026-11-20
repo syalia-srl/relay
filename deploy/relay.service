@@ -15,6 +15,12 @@ StateDirectoryMode=0700
 Environment=RELAY_STATE_PATH=/var/lib/relay/channels.json
 Environment=RELAY_ROOMS_PATH=/var/lib/relay/rooms.db
 Environment=RELAY_KEYS_PATH=/etc/relay/keys.json
+# Push (ROOMS.md 3.7) is off while RELAY_PUSH_URL is unset. Turning push on sends
+# the gateway's operator, for each wake-up, a device's push token and the time;
+# never a room id, a sender or any content. It also needs the gateway's address
+# in IPAddressAllow below.
+#Environment=RELAY_PUSH_URL=https://push.example/v1/wake
+#Environment=RELAY_PUSH_KEY_PATH=/etc/relay/push.key
 Restart=on-failure
 RestartSec=5
 
@@ -39,7 +45,7 @@ ProtectControlGroups=yes
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
 UMask=0077
-# The relay only listens on loopback and makes no outbound connection.
+# The relay listens on loopback and, with push off, makes no outbound connection.
 IPAddressDeny=any
 IPAddressAllow=localhost
 
