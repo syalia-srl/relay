@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -36,6 +38,7 @@ func main() {
 		Path:           roomsPath,
 		TestClock:      os.Getenv("RELAY_TEST_CLOCK"),
 		MaxPendingAuth: cfg.MaxPendingAuth,
+		Push:           pushConfig(),
 	}, srv.Keys)
 	if err != nil {
 		// Channels keep working; every room route answers 503.
@@ -107,4 +110,21 @@ func main() {
 		log.Fatalf("listen: %v", err)
 	}
 	<-done
+}
+
+// pushConfig reads the push gateway settings (ROOMS.md 3.7). Turning push on
+// sends the gateway's operator, for each wake-up, a device's push token and
+// the time; never a room id, a sender or any content.
+func pushConfig() rooms.PushConfig {
+	cfg := rooms.PushConfig{
+		URL:     strings.TrimSpace(os.Getenv("RELAY_PUSH_URL")),
+		KeyPath: os.Getenv("RELAY_PUSH_KEY_PATH"),
+	}
+	// RELAY_TEST_PUSH_SCALE is test-only: it scales the batch window and backoff.
+	if v := os.Getenv("RELAY_TEST_PUSH_SCALE"); v != "" {
+		if scale, err := strconv.ParseFloat(v, 64); err == nil && scale > 0 {
+			cfg.Scale = scale
+		}
+	}
+	return cfg
 }
