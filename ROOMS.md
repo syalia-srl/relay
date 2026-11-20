@@ -160,6 +160,13 @@ below it has been deleted, and every message the relay assigned a sequence at or
 it is still held. Sequences start at 1; a room with no messages deleted has watermark
 1. Clients use it to tell a deleted message from a missing one (section 4.5).
 
+Every answer under `/v1/rooms` carries `Access-Control-Allow-Origin: *` and
+`Access-Control-Expose-Headers: Relay-Room-Watermark`, and an `OPTIONS` preflight there
+answers 204 with `Access-Control-Allow-Methods: GET, POST, PUT, DELETE` and
+`Access-Control-Allow-Headers: Authorization, Content-Type`, never
+`Access-Control-Allow-Credentials`, so a page on any origin can use rooms; channel
+routes send none of these.
+
 ### 3.4 Routes
 
 Under the relay's base URL, beside the channel routes:

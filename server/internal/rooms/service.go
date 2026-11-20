@@ -108,6 +108,29 @@ func Unavailable() http.Handler {
 	})
 }
 
+// CORS lets a page on any origin call the room routes (ROOMS.md 3.3): every
+// answer under /v1/rooms carries the headers, and a preflight gets 204. Tokens
+// travel in the Authorization header, never in a cookie, so no credentials are
+// allowed. Other routes pass through untouched.
+func CORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/rooms" && !strings.HasPrefix(r.URL.Path, "/v1/rooms/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		h := w.Header()
+		h.Set("Access-Control-Allow-Origin", "*")
+		h.Set("Access-Control-Expose-Headers", "Relay-Room-Watermark")
+		if r.Method == http.MethodOptions {
+			h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+			h.Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Register adds the room routes to mux.
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/rooms", s.wrap(s.createRoom))
