@@ -120,6 +120,11 @@ const saved = room.state();                            // counters only, no key:
   each names the roster record it was made at, never lower than an earlier epoch's),
   and returns opened messages, replays the counters dropped, messages refused with a
   reason, and gaps (`missing` or `expired`, section 4.5).
+- Where the Python `RoomMember` differs (API shape only, the protocol is the same):
+  `sync` returns gaps in their own `gaps` list, where Python puts each gap inline as a
+  message with status `missing` or `expired`; it lists replays in `dropped`, where
+  Python returns them as `refused` with reason `replay`; and it makes no epoch, which
+  `send` makes when one is due, where Python's `sync` also makes it.
 - The protocol functions are exported too: `verifyRoster`, `signEntry`, `recordHash`,
   `acceptEpoch`, `makeEpoch`, `openEpoch`, `sealMessage`, `openMessage`, `sealBlob`,
   `openBlob`, `countMessages`, `parseInviteLink`, `inviteLink`, `canonical`.
