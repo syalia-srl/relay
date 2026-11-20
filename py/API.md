@@ -99,6 +99,34 @@ client.remove(device); client.set_owner(device, True); client.info(); client.del
 `Roster` has `room`, `n`, `head`, `devices`, `invites`, `records`, `readers()` and
 `state()`. `RoomError` carries a relay's `status` and `code`.
 
+### Room members
+
+`RoomMember` is one device in one room (`ROOMS.md` 3.5, 4.4 to 4.8, 5): it replays the
+roster, accepts and opens epochs, seals and opens messages and blobs, keeps the
+per-sender counters, and makes the next epoch whenever the current one does not match
+the roster's readers. Plaintext is bytes; what it means is the application's.
+
+```python
+from relay.rooms import RoomMember, software_device_keys
+
+sign_key, recv_key = software_device_keys()       # C3 shape: sign(bytes) -> 64 bytes, derive(jwk) -> 32 bytes
+member = RoomMember.join(link, sign_key=sign_key, recv_key=recv_key)   # base_url= overrides the link's relay
+seq = member.post(b"...", blob=b"file bytes")     # rotates first when 4.4 says so; a retry reuses the cid
+for m in member.sync():                           # Message(seq, device, epoch, n, plaintext, blob, at, status)
+    ...                                           # status: ok, refused, missing, expired
+member.blob(m.blob); member.ack(m.seq)
+async for seq in member.watch(): ...              # /v1/rooms/ws hints for this room
+saved = member.state()                            # ids, token, epoch keys, counters: seal it; no private key
+member = RoomMember.from_state(saved, sign_key=sign_key, recv_key=recv_key)
+```
+
+A gap entry (`missing`: the relay still owes it, `expired`: retention deleted it) comes
+right before the message that revealed it: `n` is the first missing counter, `seq` that
+message's. A message that fails a check is `refused` with `reason` and no plaintext;
+a replay is `refused` with `replay`. `roster_error` holds a `RosterInvalid` when the
+roster is broken; the records before it stand. An owner also has `RoomMember.create`
+(with a credential the caller holds), `invite`, `approve`, `remove` and `info`.
+
 ## Errors
 
 One base `RelayError`, with `PairingFailed`, `WrongCode`, `Revoked` and

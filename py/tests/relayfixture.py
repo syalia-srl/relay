@@ -64,14 +64,15 @@ def private_address() -> str:
 class Relay:
     """One relay process with its own port, state file and keys file."""
 
-    def __init__(self, root: Path, binary: str):
+    def __init__(self, root: Path, binary: str, *, keys: dict | None = None, env: dict | None = None):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
         self.address = private_address()
         self.port = _free_port()
         self.state_path = self.root / "channels.json"
         self.keys_path = self.root / "keys.json"
-        self.keys_path.write_text(json.dumps(keys_file()))
+        self.keys_path.write_text(json.dumps(keys or keys_file()))
+        self.extra_env = env or {}
         self.log_path = self.root / "relay.log"
         self.binary = binary
         self.log: object | None = None
@@ -94,6 +95,7 @@ class Relay:
                 "RELAY_STATE_PATH": str(self.state_path),
                 "RELAY_KEYS_PATH": str(self.keys_path),
                 "RELAY_V0": "off",
+                **self.extra_env,
             }
         )
         self.log = self.log_path.open("ab")
