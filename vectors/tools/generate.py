@@ -897,9 +897,11 @@ def roster_vectors() -> dict:
             "refused": refused}
 
 
-def epoch_setup():
+def epoch_setup(full: bool = False):
     w = roster_world()
     good, _ = valid_roster(w)
+    if full:
+        return w, good.records
     records = good.records[:5]  # creator, custodian and member active; the newcomer pending
     return w, records, rooms.verify_roster(records)
 
@@ -908,12 +910,13 @@ def private_jwk(key) -> dict:
     return {**rooms.public_jwk(key), "d": rooms.private_d(key)}
 
 
-def make_test_epoch(w, n: int, creator: str, recipients: list[str], signer=None, label: str = "") -> tuple:
+def make_test_epoch(w, n: int, creator: str, recipients: list[str], signer=None, label: str = "",
+                    roster: int = 5) -> tuple:
     d = w["devices"]
     key = rseed(f"epoch {n} key{label}")
     ephs = {d[r]: rooms.signing_key(rseed(f"epoch {n} eph {r}{label}")) for r in recipients}
     ivs = {d[r]: rseed(f"epoch {n} iv {r}{label}")[:12] for r in recipients}
-    epoch = rooms.make_epoch(w["room"], n, d[creator], signer or w["keys"][creator], key,
+    epoch = rooms.make_epoch(w["room"], n, roster, d[creator], signer or w["keys"][creator], key,
                              {d[r]: rooms.public_jwk(w["recv"][r]) for r in recipients}, ephs, ivs)
     return key, ephs, ivs, epoch
 
@@ -922,7 +925,7 @@ def epoch_vectors() -> dict:
     w, records, roster = epoch_setup()
     d = w["devices"]
     key, ephs, ivs, epoch = make_test_epoch(w, 2, "member", ["creator", "member"])
-    rooms.accept_epoch(roster, w["room"], epoch)
+    rooms.accept_epoch(records, w["room"], epoch)
     wraps = []
     for who in ("creator", "member"):
         dev = d[who]
@@ -947,15 +950,49 @@ def epoch_vectors() -> dict:
         ("a wrap replaced after signing", {**epoch, "wraps": {**epoch["wraps"], d["member"]: for_stranger["wraps"][d["member"]]}},
          "signature"),
     ]:
-        must_fail(rooms.accept_epoch, roster, w["room"], ep, reason=reason)
-        refused.append({"name": name, "epoch": ep, "reason": reason})
-    return {"description": "ROOMS.md 4.4: epoch 2, created by `creator` for two devices, as POST /epochs sends it. "
-                           "`roster` holds the records the receivers have verified. For each wrap: the raw ECDH secret "
-                           "(what deviceKeys.derive returns for the wrap's `eph`), the HKDF info, the AES-256-GCM wrap "
-                           "key and the IV. Fixed ephemeral keys and IVs make the bytes reproducible; an "
-                           "implementation draws fresh ones. `refused` epochs fail the receiver's check.",
-            "room": w["room"], "roster": records, "epoch_key": key.hex(), "epoch": epoch,
+        must_fail(rooms.accept_epoch, records, w["room"], ep, reason=reason)
+        refused.append({"name": name, "verified": len(records), "before": [], "epoch": ep, "reason": reason})
+
+    # After the whole valid roster: phone 2 is removed at record 13, the newcomer at record 14.
+    _, full = epoch_setup(full=True)
+    later = lambda n, creator, recipients, at, label: make_test_epoch(  # noqa: E731
+        w, n, creator, recipients, label=label, roster=at)[3]
+    after_remove = later(3, "creator", ["creator", "member"], 14, " after remove")
+    accepted = [
+        ("an epoch made before a removal stands after it", [], epoch),
+        ("a member's epoch made after the newcomer's removal", [epoch], after_remove),
+    ]
+    for _, before, ep in accepted:
+        rooms.accept_epoch(full, w["room"], ep, before)
+    honest_6 = later(3, "creator", ["creator", "member", "newcomer"], 6, " at 6")
+    for name, before, ep, reason in [
+        ("by the removed newcomer, naming a record before its removal, after a member's epoch made after it",
+         [epoch, after_remove], later(4, "newcomer", ["creator", "member", "newcomer"], 13, " removed"),
+         "roster_order"),
+        ("naming an earlier record than the epoch before it", [epoch, honest_6],
+         later(4, "member", ["creator", "member"], 5, " lower"), "roster_order"),
+        ("naming a record beyond the receiver's verified roster", [epoch],
+         later(3, "creator", ["creator", "member"], 15, " beyond"), "roster"),
+        ("naming record 0", [], later(2, "creator", ["creator"], 0, " zero"), "roster"),
+        ("wrapped for a device that joined after its record", [],
+         later(2, "creator", ["creator", "member"], 2, " early"), "unknown_device"),
+        ("by the removed newcomer, naming a record after its removal", [epoch],
+         later(3, "newcomer", ["creator", "member", "newcomer"], 14, " removed late"), "creator"),
+    ]:
+        must_fail(rooms.accept_epoch, full, w["room"], ep, before, reason=reason)
+        refused.append({"name": name, "verified": len(full), "before": before, "epoch": ep, "reason": reason})
+    return {"description": "ROOMS.md 4.4: epoch 2, created by `member` at roster record 5 for two devices, as "
+                           "POST /epochs sends it. `roster` holds the records the receivers have verified. For each "
+                           "wrap: the raw ECDH secret (what deviceKeys.derive returns for the wrap's `eph`), the HKDF "
+                           "info, the AES-256-GCM wrap key and the IV. Fixed ephemeral keys and IVs make the bytes "
+                           "reproducible; an implementation draws fresh ones. `full_roster` is the whole valid roster "
+                           "of rooms_roster.json, whose first records are `roster`. Each case in `accepted` and "
+                           "`refused` is checked by a receiver that verified the first `verified` records of "
+                           "`full_roster` and accepted the epochs of `before`; `refused` epochs fail the check.",
+            "room": w["room"], "roster": records, "full_roster": full, "epoch_key": key.hex(), "epoch": epoch,
             "signed_canonical": rooms.canonical(rooms.epoch_body(w["room"], epoch)), "wraps": wraps,
+            "accepted": [{"name": name, "verified": len(full), "before": before, "epoch": ep}
+                         for name, before, ep in accepted],
             "refused": refused}
 
 

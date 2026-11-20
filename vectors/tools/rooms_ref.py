@@ -364,26 +364,35 @@ def wrap_key(secret: bytes, info: str) -> bytes:
 
 
 def epoch_body(room: str, epoch: dict) -> dict:
-    return {"v": "relay-epoch-1", "room": room, "n": epoch["n"], "creator": epoch["creator"],
-            "wraps": epoch["wraps"]}
+    return {"v": "relay-epoch-1", "room": room, "n": epoch["n"], "roster": epoch["roster"],
+            "creator": epoch["creator"], "wraps": epoch["wraps"]}
 
 
-def make_epoch(room, n, creator, sign_key, epoch_key, recipients, ephs, ivs) -> dict:
+def make_epoch(room, n, roster, creator, sign_key, epoch_key, recipients, ephs, ivs) -> dict:
     wraps = {}
     for dev, jwk in recipients.items():
         k = wrap_key(ecdh(ephs[dev], jwk), wrap_info(room, n, dev))
         wraps[dev] = {"eph": public_jwk(ephs[dev]), "iv": b64(ivs[dev]),
                       "ct": b64(AESGCM(k).encrypt(ivs[dev], epoch_key, None))}
-    epoch = {"n": n, "creator": creator, "wraps": wraps}
+    epoch = {"n": n, "roster": roster, "creator": creator, "wraps": wraps}
     epoch["sig"] = sign(sign_key, epoch_body(room, epoch))
     return epoch
 
 
-def accept_epoch(roster: Roster, room: str, epoch: dict) -> None:
+def accept_epoch(records: list, room: str, epoch: dict, before: list = ()) -> None:
+    """Check `epoch` against the verified roster `records` and the epochs accepted before it.
+
+    The creator and every wrapped device are judged at record `roster`, by replaying records 1..roster;
+    `roster` never decreases as `n` grows.
+    """
+    at = epoch["roster"]
+    if not is_int(at) or not 1 <= at <= len(records):
+        raise Refused("roster")
+    roster = verify_roster(records[:at])
     if roster.room != room:
         raise Refused("room")
     creator = roster.active(epoch["creator"])
-    if creator is None or creator["kind"] != "device":
+    if creator is None or creator["kind"] != "device" or epoch["creator"] not in epoch["wraps"]:
         raise Refused("creator")
     if not verify(creator["sign_pub"], epoch_body(room, epoch), epoch["sig"]):
         raise Refused("signature")
@@ -391,6 +400,8 @@ def accept_epoch(roster: Roster, room: str, epoch: dict) -> None:
         d = roster.active(dev)
         if d is None or d["kind"] != "device":
             raise Refused("unknown_device")
+    if any(e["n"] < epoch["n"] and e["roster"] > at for e in before):
+        raise Refused("roster_order")
 
 
 def open_epoch(room: str, epoch: dict, device: str, recv_key) -> bytes:
