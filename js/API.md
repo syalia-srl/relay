@@ -116,7 +116,8 @@ const saved = room.state();                            // counters only, no key:
   again and makes one only if the new epoch does not cover the roster. Sends run one
   after another; a failed connection is retried with the same `cid`.
 - `sync` replays the roster (`room.roster`, `room.rosterError` when a record fails and
-  the roster is broken from there), accepts or refuses epochs (`room.refusedEpochs`),
+  the roster is broken from there), accepts or refuses epochs (`room.refusedEpochs`;
+  each names the roster record it was made at, never lower than an earlier epoch's),
   and returns opened messages, replays the counters dropped, messages refused with a
   reason, and gaps (`missing` or `expired`, section 4.5).
 - The protocol functions are exported too: `verifyRoster`, `signEntry`, `recordHash`,

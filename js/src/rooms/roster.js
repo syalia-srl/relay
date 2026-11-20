@@ -274,29 +274,34 @@ function setRole(roster, e, to, from) {
   ownersLeft(roster);
 }
 
+/** Whether a device was active at roster record `at` (after replaying records 1..at). */
+function activeAt(device, at) {
+  return device.activeFrom !== null && device.activeFrom <= at && (device.removedAt === null || at < device.removedAt);
+}
+
 /**
- * Check an epoch against a verified roster (ROOMS.md 4.4). The creator and every
- * device in `wraps` must be active devices of kind `device` at one same point of the
- * roster: the creator's verified roster when it made the epoch, which a later
- * removal does not undo. Throws Refused.
+ * Check an epoch against a verified roster (ROOMS.md 4.4). The epoch names the record
+ * `roster` its creator had verified; the creator and every device in `wraps` must be
+ * active devices of kind `device` at that record, and `roster` never decreases as `n`
+ * grows over the epochs accepted `before` (an iterable of epochs). Throws Refused.
  */
-export async function acceptEpoch(roster, room, epoch) {
+export async function acceptEpoch(roster, room, epoch, before = []) {
   if (roster.room !== room) throw new Refused("room");
   if (!isInt(epoch?.n) || epoch.n < 1 || epoch.wraps === null || typeof epoch.wraps !== "object") {
     throw new Refused("record");
   }
+  const at = epoch.roster;
+  if (!isInt(at) || at < 1 || at > roster.n) throw new Refused("roster");
   const creator = roster.device(epoch.creator);
-  if (!creator || creator.kind !== "device" || creator.activeFrom === null || !Object.hasOwn(epoch.wraps, epoch.creator)) {
+  if (!creator || creator.kind !== "device" || !activeAt(creator, at) || !Object.hasOwn(epoch.wraps, epoch.creator)) {
     throw new Refused("creator");
   }
   if (!(await verifyObject(creator.sign_pub, epochBody(room, epoch), epoch.sig))) throw new Refused("signature");
-  let from = creator.activeFrom;
-  let until = creator.removedAt ?? Infinity;
   for (const id of Object.keys(epoch.wraps)) {
     const d = roster.device(id);
-    if (!d || d.kind !== "device" || d.activeFrom === null) throw new Refused("unknown_device");
-    from = Math.max(from, d.activeFrom);
-    until = Math.min(until, d.removedAt ?? Infinity);
+    if (!d || d.kind !== "device" || !activeAt(d, at)) throw new Refused("unknown_device");
   }
-  if (from >= until) throw new Refused("unknown_device");
+  for (const earlier of before) {
+    if (earlier.n < epoch.n && earlier.roster > at) throw new Refused("roster_order");
+  }
 }

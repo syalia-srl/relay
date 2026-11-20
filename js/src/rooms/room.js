@@ -218,14 +218,14 @@ export class Room {
     for (const [n, epoch] of [...this.epochs].sort((a, b) => a[0] - b[0])) {
       if (this.accepted.has(n) || this.refusedEpochs.has(n)) continue;
       try {
-        await acceptEpoch(this.roster, this.id, epoch);
+        await acceptEpoch(this.roster, this.id, epoch, this.accepted.values());
       } catch (error) {
         if (!(error instanceof Refused)) throw error;
         if (!reread) {
           reread = true;
           await this.refreshRoster();
           try {
-            await acceptEpoch(this.roster, this.id, epoch);
+            await acceptEpoch(this.roster, this.id, epoch, this.accepted.values());
           } catch (again) {
             if (!(again instanceof Refused)) throw again;
             this.refusedEpochs.set(n, again.reason);
@@ -286,7 +286,14 @@ export class Room {
       const recipients = {};
       for (const id of this.roster.readers()) recipients[id] = this.roster.device(id).recv_pub;
       const n = Math.max(0, ...this.epochs.keys()) + 1;
-      const { epoch, key } = await makeEpoch({ room: this.id, n, creator: this.device, keys: this.keys, recipients });
+      const { epoch, key } = await makeEpoch({
+        room: this.id,
+        n,
+        roster: this.roster.n,
+        creator: this.device,
+        keys: this.keys,
+        recipients,
+      });
       try {
         await this.api.call("POST", `/${this.id}/epochs`, { json: epoch });
       } catch (error) {

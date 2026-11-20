@@ -134,20 +134,21 @@ export async function wrapFor({ room, n, device, recvPub, epochKey, eph, iv }) {
 }
 
 export function epochBody(room, epoch) {
-  return { v: "relay-epoch-1", room, n: epoch.n, creator: epoch.creator, wraps: epoch.wraps };
+  return { v: "relay-epoch-1", room, n: epoch.n, roster: epoch.roster, creator: epoch.creator, wraps: epoch.wraps };
 }
 
 /**
  * A new epoch: a fresh 32-byte key wrapped for each of `recipients` ({device: recvPub}),
- * signed by `keys`. Returns the body of POST /epochs and the key.
+ * signed by `keys`. `roster` is the length of the creator's verified roster. Returns the
+ * body of POST /epochs and the key.
  */
-export async function makeEpoch({ room, n, creator, keys, recipients, epochKey }) {
+export async function makeEpoch({ room, n, roster, creator, keys, recipients, epochKey }) {
   epochKey ??= crypto.getRandomValues(new Uint8Array(32));
   const wraps = {};
   for (const [device, recvPub] of Object.entries(recipients)) {
     wraps[device] = await wrapFor({ room, n, device, recvPub, epochKey });
   }
-  const epoch = { n, creator, wraps };
+  const epoch = { n, roster, creator, wraps };
   epoch.sig = await signObject(keys, epochBody(room, epoch));
   return { epoch, key: epochKey };
 }

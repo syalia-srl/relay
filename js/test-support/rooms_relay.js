@@ -278,7 +278,9 @@ export class FakeRoomRelay {
       noCustodian();
       const body = this.json(raw);
       if (body.creator !== me) fail(403, "forbidden");
-      if (!isInt(body.n) || typeof body.wraps !== "object" || typeof body.sig !== "string") fail(400, "bad_request");
+      if (!isInt(body.n) || !isInt(body.roster) || typeof body.wraps !== "object" || typeof body.sig !== "string") {
+        fail(400, "bad_request");
+      }
       if (this.held) {
         const held = this.held;
         await new Promise((resolve) => {
@@ -292,7 +294,7 @@ export class FakeRoomRelay {
         });
       }
       if (body.n !== room.epochs.length + 1) fail(409, "conflict");
-      room.epochs.push({ n: body.n, creator: body.creator, wraps: body.wraps, sig: body.sig });
+      room.epochs.push({ n: body.n, roster: body.roster, creator: body.creator, wraps: body.wraps, sig: body.sig });
       return { status: 201, body: {} };
     }
     if (action === "owners" && method === "POST") {

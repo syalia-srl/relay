@@ -1,6 +1,7 @@
 /**
  * A relay that lies (ROOMS.md 1 and 6): it adds a device, drops a roster record,
- * replays a message and swaps blobs. Each is refused or shown. And the epoch rules of
+ * replays a message, swaps blobs and posts an epoch with a removed device's keys. Each
+ * is refused or shown. And the epoch rules of
  * ROOMS.md 4.4: after a custodian's remove, a remaining member makes the next epoch
  * before it sends, and two members that race get one 201 and one 409.
  */
@@ -8,7 +9,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
-import { Refused, Room, makeEpoch, signEntry, softwareDeviceKeys } from "../src/rooms/index.js";
+import { Refused, Room, makeEpoch, sealMessage, signEntry, softwareDeviceKeys } from "../src/rooms/index.js";
 import { custodianRemove, roomWith, startRoomRelay, text } from "../test-support/rooms_helpers.js";
 
 let relay;
@@ -59,7 +60,7 @@ test("hostile: a join the relay forges breaks the roster there, and its epoch is
   // And an epoch it signs itself, wrapped for everyone and for itself.
   const recipients = { [a.device]: keys.recvPub, [b.device]: keys.recvPub, [intruder.device]: keys.recvPub };
   const n = relay.room(a.id).epochs.length + 1;
-  const { epoch } = await makeEpoch({ room: a.id, n, creator: intruder.device, keys, recipients });
+  const { epoch } = await makeEpoch({ room: a.id, n, roster: a.roster.n, creator: intruder.device, keys, recipients });
   relay.room(a.id).epochs.push(epoch);
 
   const sent = await a.send("still private");
@@ -72,6 +73,45 @@ test("hostile: a join the relay forges breaks the roster there, and its epoch is
   const seen = await b.sync();
   assert.deepEqual(seen.messages.map((m) => text(m.plaintext)), ["still private"]);
   assert.equal(b.rosterError.reason, "invite_signature");
+});
+
+test("hostile: with a removed device's keys, the relay posts an epoch and a message under it; both are refused", async () => {
+  const { a, members } = await roomWith(relay, 2);
+  const [b, c] = members;
+  await a.remove([c.device]);
+  await a.send("after the removal");
+  const seenBefore = await b.sync();
+  assert.deepEqual(seenBefore.messages.map((m) => text(m.plaintext)), ["after the removal"]);
+  const removedAt = b.roster.n;
+  assert.ok(b.accepted.get(Math.max(...b.accepted.keys())).roster >= removedAt, "a member already rotated");
+
+  // The relay holds c's keys: it signs an epoch that names the record before c's removal,
+  // where c was still active, wraps it for everyone, and seals a message under it.
+  const room = relay.room(a.id);
+  const n = room.epochs.length + 1;
+  const recipients = { [a.device]: a.keys.recvPub, [b.device]: b.keys.recvPub, [c.device]: c.keys.recvPub };
+  const { epoch, key } = await makeEpoch({
+    room: a.id,
+    n,
+    roster: removedAt - 1,
+    creator: c.device,
+    keys: c.keys,
+    recipients,
+  });
+  room.epochs.push(epoch);
+  const plaintext = new TextEncoder().encode("from the relay");
+  const sealed = await sealMessage({ room: a.id, epoch: n, device: c.device, n: 1, key, keys: c.keys, plaintext });
+  const seq = room.nextSeq++;
+  room.messages.push({ seq, device: c.device, cid: "AAAAAAAAAAAAAAAAAAAAAA", ...sealed, at: Math.floor(Date.now() / 1000) });
+
+  const seen = await b.sync();
+  assert.equal(b.refusedEpochs.get(n), "roster_order");
+  assert.equal(b.accepted.has(n), false);
+  assert.deepEqual(seen.messages, []);
+  assert.deepEqual(seen.refused.map((r) => [r.seq, r.device, r.reason]), [[seq, c.device, "epoch"]]);
+  const sent = await b.send("still private");
+  assert.notEqual(sent.epoch, n);
+  assert.equal(Object.hasOwn(room.epochs[sent.epoch - 1].wraps, c.device), false);
 });
 
 test("hostile: a dropped roster record shows the roster as broken at that record", async () => {

@@ -113,8 +113,12 @@ test("rooms_epoch: the epoch is accepted, the refused ones are not", async () =>
   const v = load("rooms_epoch.json");
   const roster = await verifyRoster(v.roster, { room: v.room });
   await acceptEpoch(roster, v.room, v.epoch);
-  for (const c of v.refused) await rejects(acceptEpoch(roster, v.room, c.epoch), c.reason);
   await rejects(acceptEpoch(roster, "AAAAAAAAAAAAAAAAAAAAAA", v.epoch), "room");
+  const verified = (n) => verifyRoster(v.full_roster.slice(0, n), { room: v.room });
+  for (const c of v.accepted) await acceptEpoch(await verified(c.verified), v.room, c.epoch, c.before);
+  for (const c of v.refused) {
+    await rejects(acceptEpoch(await verified(c.verified), v.room, c.epoch, c.before), c.reason);
+  }
 });
 
 async function messageContext() {
