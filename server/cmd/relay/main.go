@@ -49,7 +49,7 @@ func main() {
 
 	httpSrv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           mux,
+		Handler:           rooms.CORS(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
