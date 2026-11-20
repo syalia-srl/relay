@@ -1,0 +1,45 @@
+# /etc/systemd/system/pushgw.service
+[Unit]
+Description=pushgw — push gateway for relays (data-only FCM wake-ups)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pushgw
+Group=pushgw
+ExecStart=/srv/pushgw/pushgw
+Environment=PUSHGW_ADDR=127.0.0.1:8020
+# The relays' keys: {"keys": [{"id", "sha256", "per_minute"}]}, re-read on SIGHUP.
+Environment=PUSHGW_KEYS_PATH=/etc/pushgw/keys.json
+# The FCM service-account JSON (0600); project id and token_uri come from it.
+Environment=PUSHGW_FCM_CREDENTIALS=/etc/pushgw/fcm.json
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+CapabilityBoundingSet=
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+UMask=0077
+# The gateway listens on loopback behind the reverse proxy and connects out
+# only to FCM and the token endpoint named in the service account.
+
+[Install]
+WantedBy=multi-user.target
