@@ -1,6 +1,6 @@
 {
   "name": "@syalia/relay",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Host and guest of the relay channel protocol (PROTOCOL.md, sections 3 to 9)",
   "license": "Apache-2.0",
   "type": "module",
