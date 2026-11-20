@@ -723,7 +723,7 @@ class RosterBuilder:
 
 def roster_world() -> dict:
     """The keys and ids of the roster, epoch and message vectors."""
-    names = ["creator", "custodian", "ben", "dana", "ben phone 2", "relay"]
+    names = ["creator", "custodian", "member", "newcomer", "member phone 2", "relay"]
     world = {"room": rid("room"), "keys": {}, "recv": {}, "devices": {}}
     for n in names:
         world["keys"][n] = rooms.signing_key(rseed(f"{n} sign"))
@@ -760,24 +760,24 @@ def valid_roster(w: dict) -> tuple[RosterBuilder, list[str]]:
     add("creator", {"kind": "invite", "by": d["creator"], "invite": d["invite 1"], "invite_pub": pub("invite 1"),
                     "uses": 2, "expires_at": 1800259200, "approval": False},
         "invite 1, two uses, no approval")
-    add("ben", join_entry(w, "ben", "invite 1", 1800000100), "ben joins with invite 1")
+    add("member", join_entry(w, "member", "invite 1", 1800000100), "the member joins with invite 1")
     add("custodian", {"kind": "invite", "by": d["custodian"], "invite": d["invite 2"], "invite_pub": pub("invite 2"),
                       "uses": 1, "expires_at": 1800259200, "approval": True},
         "the custodian makes invite 2, which needs approval")
-    add("dana", join_entry(w, "dana", "invite 2", 1800000200), "dana joins with invite 2 and is pending")
-    add("creator", {"kind": "approve", "by": d["creator"], "device": d["dana"]}, "the creator approves dana")
-    add("ben phone 2", join_entry(w, "ben phone 2", "invite 1", 1800000300),
-        "ben's second phone joins with invite 1, its last use")
-    add("ben", {"kind": "link", "by": d["ben"], "device": d["ben phone 2"],
-                "device_sig": rooms.sign(k["ben phone 2"], rooms.link_body(d["ben"], d["ben phone 2"]))},
-        "ben links his second phone")
-    add("creator", {"kind": "promote", "by": d["creator"], "device": d["ben"]}, "the creator promotes ben")
-    add("custodian", {"kind": "demote", "by": d["custodian"], "device": d["ben"]}, "the custodian demotes ben")
+    add("newcomer", join_entry(w, "newcomer", "invite 2", 1800000200), "the newcomer joins with invite 2 and is pending")
+    add("creator", {"kind": "approve", "by": d["creator"], "device": d["newcomer"]}, "the creator approves the newcomer")
+    add("member phone 2", join_entry(w, "member phone 2", "invite 1", 1800000300),
+        "the member's second phone joins with invite 1, its last use")
+    add("member", {"kind": "link", "by": d["member"], "device": d["member phone 2"],
+                "device_sig": rooms.sign(k["member phone 2"], rooms.link_body(d["member"], d["member phone 2"]))},
+        "the member links its second phone")
+    add("creator", {"kind": "promote", "by": d["creator"], "device": d["member"]}, "the creator promotes the member")
+    add("custodian", {"kind": "demote", "by": d["custodian"], "device": d["member"]}, "the custodian demotes the member")
     add("creator", {"kind": "invite", "by": d["creator"], "invite": d["invite 3"], "invite_pub": pub("invite 3"),
                     "uses": 5, "expires_at": 1800259200, "approval": False}, "invite 3")
     add("creator", {"kind": "close-invite", "by": d["creator"], "invite": d["invite 3"]}, "invite 3 is closed")
-    add("ben", {"kind": "remove", "by": d["ben"], "devices": [d["ben phone 2"]]}, "ben removes his second phone")
-    add("dana", {"kind": "remove", "by": d["dana"], "devices": [d["dana"]]}, "dana leaves")
+    add("member", {"kind": "remove", "by": d["member"], "devices": [d["member phone 2"]]}, "the member removes its second phone")
+    add("newcomer", {"kind": "remove", "by": d["newcomer"], "devices": [d["newcomer"]]}, "the newcomer leaves")
     return b, steps
 
 
@@ -790,10 +790,10 @@ def roster_vectors() -> dict:
     assert state["devices"][d["creator"]] == {"kind": "device", "role": "owner", "status": "active",
                                               "member": d["creator"]}
     assert state["devices"][d["custodian"]]["kind"] == "custodian"
-    assert state["devices"][d["ben"]]["role"] == "member"
-    assert state["devices"][d["ben phone 2"]]["status"] == "removed"
-    assert state["devices"][d["ben phone 2"]]["member"] == d["ben"]
-    assert state["devices"][d["dana"]]["status"] == "removed"
+    assert state["devices"][d["member"]]["role"] == "member"
+    assert state["devices"][d["member phone 2"]]["status"] == "removed"
+    assert state["devices"][d["member phone 2"]]["member"] == d["member"]
+    assert state["devices"][d["newcomer"]]["status"] == "removed"
     assert state["invites"][d["invite 3"]]["closed"] and state["invites"][d["invite 1"]]["used"] == 2
     # Every prefix of a valid roster is valid: a relay that withholds the newest entries is not caught by replay.
     for i in range(1, len(good.records)):
@@ -835,55 +835,55 @@ def roster_vectors() -> dict:
         bad("a genesis after the first entry",
             prefix_plus(1, "creator", {**r[0]["entry"]}), 1, "genesis"),
         bad("an invite signed by a member", prefix_plus(
-            3, "ben", {"kind": "invite", "by": d["ben"], "invite": rid("x"), "invite_pub": pub("invite 3"),
+            3, "member", {"kind": "invite", "by": d["member"], "invite": rid("x"), "invite_pub": pub("invite 3"),
                        "uses": 1, "expires_at": 1800259200, "approval": False}), 3, "not_owner"),
         bad("a join whose invite signature is by another key (a relay adding a device)",
-            prefix_plus(2, "relay", join_entry({**w, "devices": {**d, "ben": d["relay"]},
-                                                "keys": {**k, "ben": k["relay"]},
-                                                "recv": {**w["recv"], "ben": w["recv"]["relay"]}},
-                                               "ben", "invite 1", 1800000100, invite_key=k["invite relay"])),
+            prefix_plus(2, "relay", join_entry({**w, "devices": {**d, "member": d["relay"]},
+                                                "keys": {**k, "member": k["relay"]},
+                                                "recv": {**w["recv"], "member": w["recv"]["relay"]}},
+                                               "member", "invite 1", 1800000100, invite_key=k["invite relay"])),
             2, "invite_signature"),
         bad("a join for an invite that is not in the roster",
-            prefix_plus(2, "relay", join_entry({**w, "devices": {**d, "ben": d["relay"]},
-                                                "keys": {**k, "ben": k["relay"]},
-                                                "recv": {**w["recv"], "ben": w["recv"]["relay"]}},
-                                               "ben", "invite relay", 1800000100)),
+            prefix_plus(2, "relay", join_entry({**w, "devices": {**d, "member": d["relay"]},
+                                                "keys": {**k, "member": k["relay"]},
+                                                "recv": {**w["recv"], "member": w["recv"]["relay"]}},
+                                               "member", "invite relay", 1800000100)),
             2, "invite_unknown"),
         bad("a join past the invite's uses",
-            prefix_plus(7, "relay", join_entry({**w, "devices": {**d, "ben": d["relay"]},
-                                                "keys": {**k, "ben": k["relay"]},
-                                                "recv": {**w["recv"], "ben": w["recv"]["relay"]}},
-                                               "ben", "invite 1", 1800000400)),
+            prefix_plus(7, "relay", join_entry({**w, "devices": {**d, "member": d["relay"]},
+                                                "keys": {**k, "member": k["relay"]},
+                                                "recv": {**w["recv"], "member": w["recv"]["relay"]}},
+                                               "member", "invite 1", 1800000400)),
             7, "invite_used"),
         bad("a join at the invite's expiry",
-            prefix_plus(2, "ben", join_entry(w, "ben", "invite 1", 1800259200)), 2, "invite_expired"),
+            prefix_plus(2, "member", join_entry(w, "member", "invite 1", 1800259200)), 2, "invite_expired"),
         bad("a join under a closed invite",
-            prefix_plus(12, "relay", join_entry({**w, "devices": {**d, "ben": d["relay"]},
-                                                 "keys": {**k, "ben": k["relay"]},
-                                                 "recv": {**w["recv"], "ben": w["recv"]["relay"]}},
-                                                "ben", "invite 3", 1800000500)),
+            prefix_plus(12, "relay", join_entry({**w, "devices": {**d, "member": d["relay"]},
+                                                 "keys": {**k, "member": k["relay"]},
+                                                 "recv": {**w["recv"], "member": w["recv"]["relay"]}},
+                                                "member", "invite 3", 1800000500)),
             12, "invite_closed"),
         bad("a join that reuses a device id", prefix_plus(
-            2, "ben", join_entry({**w, "devices": {**d, "ben": d["creator"]}}, "ben", "invite 1", 1800000100)),
+            2, "member", join_entry({**w, "devices": {**d, "member": d["creator"]}}, "member", "invite 1", 1800000100)),
             2, "device"),
         bad("a pending device signs an entry", prefix_plus(
-            5, "dana", {"kind": "remove", "by": d["dana"], "devices": [d["dana"]]}), 5, "signer"),
+            5, "newcomer", {"kind": "remove", "by": d["newcomer"], "devices": [d["newcomer"]]}), 5, "signer"),
         bad("a removed device signs an entry", prefix_plus(
-            14, "dana", {"kind": "remove", "by": d["dana"], "devices": [d["ben"]]}), 14, "signer"),
+            14, "newcomer", {"kind": "remove", "by": d["newcomer"], "devices": [d["member"]]}), 14, "signer"),
         bad("a member removes another member's device", prefix_plus(
-            12, "ben", {"kind": "remove", "by": d["ben"], "devices": [d["dana"]]}), 12, "not_owner"),
+            12, "member", {"kind": "remove", "by": d["member"], "devices": [d["newcomer"]]}), 12, "not_owner"),
         bad("a remove that leaves no owner", prefix_plus(
             3, "creator", {"kind": "remove", "by": d["creator"], "devices": [d["creator"], d["custodian"]]}),
             3, "last_owner"),
         bad("a demote of the last owner", last_owner_demote(), 2, "last_owner"),
         bad("a link without the device's own signature", prefix_plus(
-            7, "ben", {"kind": "link", "by": d["ben"], "device": d["ben phone 2"],
-                       "device_sig": rooms.sign(k["relay"], rooms.link_body(d["ben"], d["ben phone 2"]))}),
+            7, "member", {"kind": "link", "by": d["member"], "device": d["member phone 2"],
+                       "device_sig": rooms.sign(k["relay"], rooms.link_body(d["member"], d["member phone 2"]))}),
             7, "link_signature"),
         bad("an approve of a device that is not pending", prefix_plus(
-            3, "creator", {"kind": "approve", "by": d["creator"], "device": d["ben"]}), 3, "state"),
+            3, "creator", {"kind": "approve", "by": d["creator"], "device": d["member"]}), 3, "state"),
         bad("a promote by the device itself", prefix_plus(
-            3, "ben", {"kind": "promote", "by": d["ben"], "device": d["ben"]}), 3, "not_owner"),
+            3, "member", {"kind": "promote", "by": d["member"], "device": d["member"]}), 3, "not_owner"),
         bad("an unknown entry kind", prefix_plus(
             3, "creator", {"kind": "rename", "by": d["creator"]}), 3, "kind"),
         bad("a record whose n is not its position", r[:2] + [{**r[2], "n": 4}], 2, "n"),
@@ -900,7 +900,7 @@ def roster_vectors() -> dict:
 def epoch_setup():
     w = roster_world()
     good, _ = valid_roster(w)
-    records = good.records[:5]  # creator, custodian and ben active; dana pending
+    records = good.records[:5]  # creator, custodian and member active; the newcomer pending
     return w, records, rooms.verify_roster(records)
 
 
@@ -921,10 +921,10 @@ def make_test_epoch(w, n: int, creator: str, recipients: list[str], signer=None,
 def epoch_vectors() -> dict:
     w, records, roster = epoch_setup()
     d = w["devices"]
-    key, ephs, ivs, epoch = make_test_epoch(w, 2, "ben", ["creator", "ben"])
+    key, ephs, ivs, epoch = make_test_epoch(w, 2, "member", ["creator", "member"])
     rooms.accept_epoch(roster, w["room"], epoch)
     wraps = []
-    for who in ("creator", "ben"):
+    for who in ("creator", "member"):
         dev = d[who]
         assert rooms.open_epoch(w["room"], epoch, dev, w["recv"][who]) == key
         secret = rooms.ecdh(w["recv"][who], epoch["wraps"][dev]["eph"])
@@ -934,17 +934,17 @@ def epoch_vectors() -> dict:
                       "eph_private_jwk": private_jwk(ephs[dev]), "ecdh_secret": secret.hex(),
                       "hkdf_info": info, "wrap_key": rooms.wrap_key(secret, info).hex(), "iv": ivs[dev].hex(),
                       "wrap": epoch["wraps"][dev]})
-    _, _, _, for_pending = make_test_epoch(w, 2, "ben", ["creator", "ben", "dana"], label=" pending")
-    _, _, _, for_stranger = make_test_epoch(w, 2, "ben", ["creator", "ben", "relay"], label=" stranger")
-    _, _, _, by_custodian = make_test_epoch(w, 2, "custodian", ["creator", "ben"], label=" custodian")
-    _, _, _, forged = make_test_epoch(w, 2, "ben", ["creator", "ben"], signer=w["keys"]["relay"], label=" forged")
+    _, _, _, for_pending = make_test_epoch(w, 2, "member", ["creator", "member", "newcomer"], label=" pending")
+    _, _, _, for_stranger = make_test_epoch(w, 2, "member", ["creator", "member", "relay"], label=" stranger")
+    _, _, _, by_custodian = make_test_epoch(w, 2, "custodian", ["creator", "member"], label=" custodian")
+    _, _, _, forged = make_test_epoch(w, 2, "member", ["creator", "member"], signer=w["keys"]["relay"], label=" forged")
     refused = []
     for name, ep, reason in [
         ("wrapped for a device the roster does not have (a relay adding a device)", for_stranger, "unknown_device"),
         ("wrapped for a device still waiting for approval", for_pending, "unknown_device"),
         ("created by the custodian, which has no receiving key", by_custodian, "creator"),
         ("signed by a key that is not the creator's", forged, "signature"),
-        ("a wrap replaced after signing", {**epoch, "wraps": {**epoch["wraps"], d["ben"]: for_stranger["wraps"][d["ben"]]}},
+        ("a wrap replaced after signing", {**epoch, "wraps": {**epoch["wraps"], d["member"]: for_stranger["wraps"][d["member"]]}},
          "signature"),
     ]:
         must_fail(rooms.accept_epoch, roster, w["room"], ep, reason=reason)
@@ -962,7 +962,7 @@ def epoch_vectors() -> dict:
 def message_vectors() -> dict:
     w, records, roster = epoch_setup()
     d, k = w["devices"], w["keys"]
-    key, _, _, epoch = make_test_epoch(w, 2, "ben", ["creator", "ben"])
+    key, _, _, epoch = make_test_epoch(w, 2, "member", ["creator", "member"])
     epochs, keys = {2: epoch}, {2: key}
 
     def msg(who: str, n: int, seq: int, plaintext: bytes, blob: str | None = None, signer=None, aad_device=None):
@@ -970,9 +970,9 @@ def message_vectors() -> dict:
                                rseed(f"msg iv {who} {n}")[:12], blob=blob, aad_device=aad_device)
         return {"seq": seq, "device": d[who], "cid": rid(f"cid {who} {n}"), **m, "at": 1800000400 + seq}
 
-    plain = [("ben", 1, 1, b'{"type":"text","body":"hola"}', None),
+    plain = [("member", 1, 1, b'{"type":"text","body":"hola"}', None),
              ("creator", 1, 2, b'{"type":"text","body":"buenas, \xc3\xb1and\xc3\xba"}', None),
-             ("ben", 2, 3, b'{"type":"file","name":"plan.pdf"}', rid("blob 1"))]
+             ("member", 2, 3, b'{"type":"file","name":"plan.pdf"}', rid("blob 1"))]
     cases = []
     for who, n, seq, pt, blob in plain:
         m = msg(who, n, seq, pt, blob)
@@ -990,12 +990,12 @@ def message_vectors() -> dict:
         ("from a device the epoch was not wrapped for (the custodian)",
          msg("custodian", 1, 4, b'{"type":"text","body":"x"}'), "not_wrapped"),
         ("sealed by its sender with another device's additional data",
-         msg("ben", 3, 5, b'{"type":"text","body":"x"}', aad_device=d["creator"]), "decrypt"),
+         msg("member", 3, 5, b'{"type":"text","body":"x"}', aad_device=d["creator"]), "decrypt"),
     ]:
         must_fail(rooms.open_message, w["room"], roster, epochs, keys, m, reason=reason)
         refused.append({"name": name, "message": m, "reason": reason})
 
-    a, b = d["ben"], d["creator"]
+    a, b = d["member"], d["creator"]
     counter_cases = [
         ("in order", {}, 1, [(1, a, 1), (2, b, 1), (3, a, 2)], ["accept"] * 3, []),
         ("a replayed counter is dropped", {a: (2, 3)}, 1, [(4, a, 2), (5, a, 3), (6, a, 3)],
@@ -1024,7 +1024,7 @@ def message_vectors() -> dict:
                            "the messages in sequence order, and what the receiver does with each, the gaps it "
                            "reports and its state afterwards.",
             "room": w["room"], "epoch": 2, "epoch_key": key.hex(),
-            "senders": {d[n]: rooms.public_jwk(k[n]) for n in ("ben", "creator", "custodian")},
+            "senders": {d[n]: rooms.public_jwk(k[n]) for n in ("member", "creator", "custodian")},
             "cases": cases, "refused": refused, "counters": counters}
 
 

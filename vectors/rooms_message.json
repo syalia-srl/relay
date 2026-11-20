@@ -4,11 +4,11 @@
   "epoch": 2,
   "epoch_key": "17822f851c4b837ef7049382c439c3c116aea90b9e54056711c8f75957ab72b0",
   "senders": {
-    "CeQrC2Xp-az0c8F2VtoNCg": {
+    "FpCjSsRybP51m0ZAfAKDQw": {
       "crv": "P-256",
       "kty": "EC",
-      "x": "J0lFFsQKZ2AVPrN89LhsFB54vAEhQdxCKZGc5sem87I",
-      "y": "FZXTlBrMeF26SDzdjK-jRFMtnYhqH9B3locY_LKfoZc"
+      "x": "W-JKEgxp-W7rArq3jw-wd-9esjLxD5YUJBoLzTxC8Qs",
+      "y": "seoLJXrIOtD6_iA4R7hvj2pmdt9TeTYuEgYd9pVTbjE"
     },
     "zPawjYFPq7Q5evadaSFuFA": {
       "crv": "P-256",
@@ -27,18 +27,18 @@
     {
       "message": {
         "seq": 1,
-        "device": "CeQrC2Xp-az0c8F2VtoNCg",
-        "cid": "cKfQG4Fsd9DGvH8xQGRT9g",
+        "device": "FpCjSsRybP51m0ZAfAKDQw",
+        "cid": "BN6CYccgk-_qc4ppU2Hp3g",
         "epoch": 2,
         "n": 1,
-        "iv": "pxbpL-IhhWYJzWBM",
-        "ct": "xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3",
-        "sig": "rydbVYJw-FWE9dYNopkIRFs2YlLOL5NnMIISv3hCWSRQ-gZZjQ6ytJZ_bSziFs4MfGpb-KqIMNw6OKjG4PgIDw",
+        "iv": "mHYxU3WBJ9Ke-vlj",
+        "ct": "D2iBXAgXbcOGbVWfw5lHhpi7Ilt0Axzsz_xM9M-1iEuJI6LSdPgsso8khQHK",
+        "sig": "KnYEr0zT6ouxv1omWF1SvQgDU4PQSlAZ62tfX5zHahQErhqAyGlTiTcAtwOSQ7WTFkhtnO9WV16D9mvfnAbYwA",
         "at": 1800000401
       },
       "plaintext": "7b2274797065223a2274657874222c22626f6479223a22686f6c61227d",
-      "additional_data": "relay-msg-1|QkF6e-ZNRW8V6NXMuzu1bw|2|CeQrC2Xp-az0c8F2VtoNCg|1",
-      "signed_canonical": "{\"ct\":\"xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3\",\"device\":\"CeQrC2Xp-az0c8F2VtoNCg\",\"epoch\":2,\"iv\":\"pxbpL-IhhWYJzWBM\",\"n\":1,\"room\":\"QkF6e-ZNRW8V6NXMuzu1bw\",\"v\":\"relay-msg-1\"}"
+      "additional_data": "relay-msg-1|QkF6e-ZNRW8V6NXMuzu1bw|2|FpCjSsRybP51m0ZAfAKDQw|1",
+      "signed_canonical": "{\"ct\":\"D2iBXAgXbcOGbVWfw5lHhpi7Ilt0Axzsz_xM9M-1iEuJI6LSdPgsso8khQHK\",\"device\":\"FpCjSsRybP51m0ZAfAKDQw\",\"epoch\":2,\"iv\":\"mHYxU3WBJ9Ke-vlj\",\"n\":1,\"room\":\"QkF6e-ZNRW8V6NXMuzu1bw\",\"v\":\"relay-msg-1\"}"
     },
     {
       "message": {
@@ -59,19 +59,19 @@
     {
       "message": {
         "seq": 3,
-        "device": "CeQrC2Xp-az0c8F2VtoNCg",
-        "cid": "_BuF-kHJ1D5ASI_pw6aorg",
+        "device": "FpCjSsRybP51m0ZAfAKDQw",
+        "cid": "Lbgq9gLMpmec0Z4NCL9FsA",
         "epoch": 2,
         "n": 2,
-        "iv": "7hVxaV6eXQePJlsa",
-        "ct": "osNJB19IjO7OU3l29SPZMn3ecWFYGywBECwvCT4brpmzcPRg2gOsi_Zq_SJyA1g3tQ",
+        "iv": "MMF4CD3ngKtfXu9J",
+        "ct": "NodIH8C85LcR_vjc7QGzrtnk_HUbeCBXbku3NAAcls1D4e_ZAb8C2m70-CBQkOY4Bw",
         "blob": "n1MFeJNRi3iGm5zP6yIwww",
-        "sig": "7v0tPF02oPTFtdjzS9rq2ZOohrgvid4Sok7_8W7AKBnD6UDHYkPNmQLhejduDfwXSTjd-LPhNALwn1U0YWWxkQ",
+        "sig": "vMl0jAyQ3j5YD3A4RuJ3_Xv7-vfFYviZBU2KYXYL12kgTDfrgLlCD-aKhAgKo1vfC-4IjK45cm68Lu4QH0o1xg",
         "at": 1800000403
       },
       "plaintext": "7b2274797065223a2266696c65222c226e616d65223a22706c616e2e706466227d",
-      "additional_data": "relay-msg-1|QkF6e-ZNRW8V6NXMuzu1bw|2|CeQrC2Xp-az0c8F2VtoNCg|2",
-      "signed_canonical": "{\"blob\":\"n1MFeJNRi3iGm5zP6yIwww\",\"ct\":\"osNJB19IjO7OU3l29SPZMn3ecWFYGywBECwvCT4brpmzcPRg2gOsi_Zq_SJyA1g3tQ\",\"device\":\"CeQrC2Xp-az0c8F2VtoNCg\",\"epoch\":2,\"iv\":\"7hVxaV6eXQePJlsa\",\"n\":2,\"room\":\"QkF6e-ZNRW8V6NXMuzu1bw\",\"v\":\"relay-msg-1\"}"
+      "additional_data": "relay-msg-1|QkF6e-ZNRW8V6NXMuzu1bw|2|FpCjSsRybP51m0ZAfAKDQw|2",
+      "signed_canonical": "{\"blob\":\"n1MFeJNRi3iGm5zP6yIwww\",\"ct\":\"NodIH8C85LcR_vjc7QGzrtnk_HUbeCBXbku3NAAcls1D4e_ZAb8C2m70-CBQkOY4Bw\",\"device\":\"FpCjSsRybP51m0ZAfAKDQw\",\"epoch\":2,\"iv\":\"MMF4CD3ngKtfXu9J\",\"n\":2,\"room\":\"QkF6e-ZNRW8V6NXMuzu1bw\",\"v\":\"relay-msg-1\"}"
     }
   ],
   "refused": [
@@ -79,13 +79,13 @@
       "name": "a signature with one bit flipped",
       "message": {
         "seq": 1,
-        "device": "CeQrC2Xp-az0c8F2VtoNCg",
-        "cid": "cKfQG4Fsd9DGvH8xQGRT9g",
+        "device": "FpCjSsRybP51m0ZAfAKDQw",
+        "cid": "BN6CYccgk-_qc4ppU2Hp3g",
         "epoch": 2,
         "n": 1,
-        "iv": "pxbpL-IhhWYJzWBM",
-        "ct": "xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3",
-        "sig": "rydbVIJw-FWE9dYNopkIRFs2YlLOL5NnMIISv3hCWSRQ-gZZjQ6ytJZ_bSziFs4MfGpb-KqIMNw6OKjG4PgIDw",
+        "iv": "mHYxU3WBJ9Ke-vlj",
+        "ct": "D2iBXAgXbcOGbVWfw5lHhpi7Ilt0Axzsz_xM9M-1iEuJI6LSdPgsso8khQHK",
+        "sig": "KnYErkzT6ouxv1omWF1SvQgDU4PQSlAZ62tfX5zHahQErhqAyGlTiTcAtwOSQ7WTFkhtnO9WV16D9mvfnAbYwA",
         "at": 1800000401
       },
       "reason": "signature"
@@ -95,12 +95,12 @@
       "message": {
         "seq": 1,
         "device": "zPawjYFPq7Q5evadaSFuFA",
-        "cid": "cKfQG4Fsd9DGvH8xQGRT9g",
+        "cid": "BN6CYccgk-_qc4ppU2Hp3g",
         "epoch": 2,
         "n": 1,
-        "iv": "pxbpL-IhhWYJzWBM",
-        "ct": "xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3",
-        "sig": "rydbVYJw-FWE9dYNopkIRFs2YlLOL5NnMIISv3hCWSRQ-gZZjQ6ytJZ_bSziFs4MfGpb-KqIMNw6OKjG4PgIDw",
+        "iv": "mHYxU3WBJ9Ke-vlj",
+        "ct": "D2iBXAgXbcOGbVWfw5lHhpi7Ilt0Axzsz_xM9M-1iEuJI6LSdPgsso8khQHK",
+        "sig": "KnYEr0zT6ouxv1omWF1SvQgDU4PQSlAZ62tfX5zHahQErhqAyGlTiTcAtwOSQ7WTFkhtnO9WV16D9mvfnAbYwA",
         "at": 1800000401
       },
       "reason": "signature"
@@ -109,13 +109,13 @@
       "name": "its counter changed",
       "message": {
         "seq": 1,
-        "device": "CeQrC2Xp-az0c8F2VtoNCg",
-        "cid": "cKfQG4Fsd9DGvH8xQGRT9g",
+        "device": "FpCjSsRybP51m0ZAfAKDQw",
+        "cid": "BN6CYccgk-_qc4ppU2Hp3g",
         "epoch": 2,
         "n": 7,
-        "iv": "pxbpL-IhhWYJzWBM",
-        "ct": "xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3",
-        "sig": "rydbVYJw-FWE9dYNopkIRFs2YlLOL5NnMIISv3hCWSRQ-gZZjQ6ytJZ_bSziFs4MfGpb-KqIMNw6OKjG4PgIDw",
+        "iv": "mHYxU3WBJ9Ke-vlj",
+        "ct": "D2iBXAgXbcOGbVWfw5lHhpi7Ilt0Axzsz_xM9M-1iEuJI6LSdPgsso8khQHK",
+        "sig": "KnYEr0zT6ouxv1omWF1SvQgDU4PQSlAZ62tfX5zHahQErhqAyGlTiTcAtwOSQ7WTFkhtnO9WV16D9mvfnAbYwA",
         "at": 1800000401
       },
       "reason": "signature"
@@ -124,13 +124,13 @@
       "name": "under an epoch the receiver does not have",
       "message": {
         "seq": 1,
-        "device": "CeQrC2Xp-az0c8F2VtoNCg",
-        "cid": "cKfQG4Fsd9DGvH8xQGRT9g",
+        "device": "FpCjSsRybP51m0ZAfAKDQw",
+        "cid": "BN6CYccgk-_qc4ppU2Hp3g",
         "epoch": 3,
         "n": 1,
-        "iv": "pxbpL-IhhWYJzWBM",
-        "ct": "xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3",
-        "sig": "rydbVYJw-FWE9dYNopkIRFs2YlLOL5NnMIISv3hCWSRQ-gZZjQ6ytJZ_bSziFs4MfGpb-KqIMNw6OKjG4PgIDw",
+        "iv": "mHYxU3WBJ9Ke-vlj",
+        "ct": "D2iBXAgXbcOGbVWfw5lHhpi7Ilt0Axzsz_xM9M-1iEuJI6LSdPgsso8khQHK",
+        "sig": "KnYEr0zT6ouxv1omWF1SvQgDU4PQSlAZ62tfX5zHahQErhqAyGlTiTcAtwOSQ7WTFkhtnO9WV16D9mvfnAbYwA",
         "at": 1800000401
       },
       "reason": "epoch"
@@ -154,13 +154,13 @@
       "name": "sealed by its sender with another device's additional data",
       "message": {
         "seq": 5,
-        "device": "CeQrC2Xp-az0c8F2VtoNCg",
-        "cid": "8rEMFPzxEhVmotnbH3aIVQ",
+        "device": "FpCjSsRybP51m0ZAfAKDQw",
+        "cid": "g8v_e7kt6DTv_PDA7z5rMg",
         "epoch": 2,
         "n": 3,
-        "iv": "6RD_A9mKL0qDYOY-",
-        "ct": "C43tRCK0g5w7dyLjXsY_60nBE5ZUM9PmTIPwrpXWsZhOTevosq4-AI47",
-        "sig": "lyICoaJXYO30dXWE982JtbbhZKTobKU8YL-ZTZNd_3yREuWq5ICUVtKKmAmuEL7b8zTi8lij5ETbQABaLxx3Wg",
+        "iv": "zkMlTf4Cr5rmUcVt",
+        "ct": "G85dwiTRXX_Fv78gBn4vme7V3gsMdwhQL6VcUkX_xiUcuYB-TFUf4T8n",
+        "sig": "ujqPm-GzfVAIYd1CMvg1L_5L8Erc6KGk6p7cWppr9RNyQ4aHFbn5ksggBoXQ7N_yw_1cLGQIDPIJZojoMYm4dg",
         "at": 1800000405
       },
       "reason": "decrypt"
@@ -174,7 +174,7 @@
       "messages": [
         {
           "seq": 1,
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "n": 1
         },
         {
@@ -184,7 +184,7 @@
         },
         {
           "seq": 3,
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "n": 2
         }
       ],
@@ -195,7 +195,7 @@
       ],
       "gaps": [],
       "state_after": {
-        "CeQrC2Xp-az0c8F2VtoNCg": {
+        "FpCjSsRybP51m0ZAfAKDQw": {
           "n": 2,
           "seq": 3
         },
@@ -208,7 +208,7 @@
     {
       "name": "a replayed counter is dropped",
       "state": {
-        "CeQrC2Xp-az0c8F2VtoNCg": {
+        "FpCjSsRybP51m0ZAfAKDQw": {
           "n": 2,
           "seq": 3
         }
@@ -217,17 +217,17 @@
       "messages": [
         {
           "seq": 4,
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "n": 2
         },
         {
           "seq": 5,
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "n": 3
         },
         {
           "seq": 6,
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "n": 3
         }
       ],
@@ -238,7 +238,7 @@
       ],
       "gaps": [],
       "state_after": {
-        "CeQrC2Xp-az0c8F2VtoNCg": {
+        "FpCjSsRybP51m0ZAfAKDQw": {
           "n": 3,
           "seq": 5
         }
@@ -247,7 +247,7 @@
     {
       "name": "a gap the relay still owes",
       "state": {
-        "CeQrC2Xp-az0c8F2VtoNCg": {
+        "FpCjSsRybP51m0ZAfAKDQw": {
           "n": 2,
           "seq": 3
         }
@@ -256,7 +256,7 @@
       "messages": [
         {
           "seq": 5,
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "n": 4
         }
       ],
@@ -265,14 +265,14 @@
       ],
       "gaps": [
         {
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "after_n": 2,
           "before_n": 4,
           "cause": "missing"
         }
       ],
       "state_after": {
-        "CeQrC2Xp-az0c8F2VtoNCg": {
+        "FpCjSsRybP51m0ZAfAKDQw": {
           "n": 4,
           "seq": 5
         }
@@ -281,7 +281,7 @@
     {
       "name": "a gap below the watermark was deleted by age",
       "state": {
-        "CeQrC2Xp-az0c8F2VtoNCg": {
+        "FpCjSsRybP51m0ZAfAKDQw": {
           "n": 2,
           "seq": 3
         }
@@ -290,7 +290,7 @@
       "messages": [
         {
           "seq": 12,
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "n": 5
         }
       ],
@@ -299,14 +299,14 @@
       ],
       "gaps": [
         {
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "after_n": 2,
           "before_n": 5,
           "cause": "expired"
         }
       ],
       "state_after": {
-        "CeQrC2Xp-az0c8F2VtoNCg": {
+        "FpCjSsRybP51m0ZAfAKDQw": {
           "n": 5,
           "seq": 12
         }
@@ -315,7 +315,7 @@
     {
       "name": "a watermark just past the last seen sequence still owes the gap",
       "state": {
-        "CeQrC2Xp-az0c8F2VtoNCg": {
+        "FpCjSsRybP51m0ZAfAKDQw": {
           "n": 2,
           "seq": 3
         }
@@ -324,7 +324,7 @@
       "messages": [
         {
           "seq": 6,
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "n": 4
         }
       ],
@@ -333,14 +333,14 @@
       ],
       "gaps": [
         {
-          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "device": "FpCjSsRybP51m0ZAfAKDQw",
           "after_n": 2,
           "before_n": 4,
           "cause": "missing"
         }
       ],
       "state_after": {
-        "CeQrC2Xp-az0c8F2VtoNCg": {
+        "FpCjSsRybP51m0ZAfAKDQw": {
           "n": 4,
           "seq": 6
         }

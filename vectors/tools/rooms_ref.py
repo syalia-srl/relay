@@ -64,7 +64,7 @@ def is_int(value) -> bool:
 
 
 def canonical(value) -> str:
-    """Sorted keys, no spaces, non-ASCII as itself: vault's canonical. Keys are ASCII, numbers integers."""
+    """Sorted keys, no spaces, non-ASCII as itself, as JSON.stringify writes strings. Keys are ASCII, numbers integers."""
     def check(v):
         if isinstance(v, float):
             raise ValueError("no floats in signed objects")
