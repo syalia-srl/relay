@@ -24,6 +24,9 @@ type KeySpec struct {
 	CreatesPerMinute int64  `json:"creates_per_minute"`
 	BytesPerDay      int64  `json:"bytes_per_day"`
 	Unlimited        bool   `json:"unlimited"`
+	// Rooms is the key's room quota, read by keyRoomQuota; a malformed one
+	// means no room quota, never a broken keys file.
+	Rooms json.RawMessage `json:"rooms"`
 }
 
 // Keys is the file RELAY_KEYS_PATH points at, read at start and on SIGHUP.
@@ -39,6 +42,7 @@ type Keys struct {
 type keyDigest struct {
 	spec   KeySpec
 	digest string
+	rooms  *RoomQuota
 }
 
 // KeyInfo is what one presented key allows.
@@ -48,6 +52,11 @@ type KeyInfo struct {
 	CreatesPerMinute int64
 	BytesPerDay      int64
 	Unlimited        bool
+	// Rooms is the room quota, nil when the key creates no rooms.
+	Rooms *RoomQuota
+	// Token is true for an rt1 relay token, whose expiry is Exp.
+	Token bool
+	Exp   int64
 }
 
 // LoadKeys reads and validates the keys file. A missing or unreadable file is
@@ -84,7 +93,7 @@ func LoadKeys(path string) (*Keys, error) {
 			log.Printf("key %q has no usable SHA-256 digest; ignoring it", spec.ID)
 			continue
 		}
-		k.specs = append(k.specs, keyDigest{spec: spec, digest: digest})
+		k.specs = append(k.specs, keyDigest{spec: spec, digest: digest, rooms: keyRoomQuota(spec.Rooms)})
 	}
 	return k, nil
 }
@@ -103,6 +112,9 @@ func (k *Keys) Lookup(raw string, now time.Time) (KeyInfo, bool) {
 			Channels:         t.Channels,
 			CreatesPerMinute: t.CreatesPerMin,
 			BytesPerDay:      t.BytesPerDay,
+			Rooms:            t.Rooms,
+			Token:            true,
+			Exp:              t.Exp,
 		}, true
 	}
 	sum := sha256.Sum256([]byte(raw))
@@ -115,10 +127,22 @@ func (k *Keys) Lookup(raw string, now time.Time) (KeyInfo, bool) {
 				CreatesPerMinute: entry.spec.CreatesPerMinute,
 				BytesPerDay:      entry.spec.BytesPerDay,
 				Unlimited:        entry.spec.Unlimited,
+				Rooms:            entry.rooms,
 			}, true
 		}
 	}
 	return KeyInfo{}, false
+}
+
+// OperatorRooms reports whether the operator key with this credential id
+// (the ID Lookup gives it) is still in the file, and its room quota.
+func (k *Keys) OperatorRooms(id string) (*RoomQuota, bool) {
+	for _, entry := range k.specs {
+		if "sha256:"+entry.digest == id {
+			return entry.rooms, true
+		}
+	}
+	return nil, false
 }
 
 // tokenKeyID names a relay token holder without letting two pairs collide.
