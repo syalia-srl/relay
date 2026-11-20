@@ -1,0 +1,200 @@
+{
+  "description": "ROOMS.md 5: invite links. A valid link parses into the relay host, room id, join token and invite key (base64url PKCS#8 of a P-256 key with its public key); `invite_pub` is that public key as a reduced JWK, which the joiner looks up in the roster. A reader takes the text after the first `#`, or the whole text when it has none.",
+  "invite_private_jwk": {
+    "crv": "P-256",
+    "kty": "EC",
+    "x": "roZ30JAnSnoZ_yeSPShX4J-UynBVEscWNMb1eQTPv_0",
+    "y": "_ZgawA1kVTVBSqJGY_9YV_2WliwM6XGljFuJyVtuNR8",
+    "d": "Etebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4g"
+  },
+  "cases": [
+    {
+      "name": "a link",
+      "text": "https://app.example/j#v1.relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": true,
+      "parsed": {
+        "relay_host": "relay.example",
+        "room": "QkF6e-ZNRW8V6NXMuzu1bw",
+        "join_token": "mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM",
+        "invite_key": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+        "invite_pub": {
+          "crv": "P-256",
+          "kty": "EC",
+          "x": "roZ30JAnSnoZ_yeSPShX4J-UynBVEscWNMb1eQTPv_0",
+          "y": "_ZgawA1kVTVBSqJGY_9YV_2WliwM6XGljFuJyVtuNR8"
+        }
+      },
+      "relay_base_url": "https://relay.example"
+    },
+    {
+      "name": "a host with a port",
+      "text": "https://app.example/j#v1.relay.example:8443.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": true,
+      "parsed": {
+        "relay_host": "relay.example:8443",
+        "room": "QkF6e-ZNRW8V6NXMuzu1bw",
+        "join_token": "mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM",
+        "invite_key": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+        "invite_pub": {
+          "crv": "P-256",
+          "kty": "EC",
+          "x": "roZ30JAnSnoZ_yeSPShX4J-UynBVEscWNMb1eQTPv_0",
+          "y": "_ZgawA1kVTVBSqJGY_9YV_2WliwM6XGljFuJyVtuNR8"
+        }
+      },
+      "relay_base_url": "https://relay.example:8443"
+    },
+    {
+      "name": "an IPv4 address with a port",
+      "text": "https://app.example/j#v1.203.0.113.7:8010.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": true,
+      "parsed": {
+        "relay_host": "203.0.113.7:8010",
+        "room": "QkF6e-ZNRW8V6NXMuzu1bw",
+        "join_token": "mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM",
+        "invite_key": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+        "invite_pub": {
+          "crv": "P-256",
+          "kty": "EC",
+          "x": "roZ30JAnSnoZ_yeSPShX4J-UynBVEscWNMb1eQTPv_0",
+          "y": "_ZgawA1kVTVBSqJGY_9YV_2WliwM6XGljFuJyVtuNR8"
+        }
+      },
+      "relay_base_url": "https://203.0.113.7:8010"
+    },
+    {
+      "name": "a host of one label",
+      "text": "https://app.example/j#v1.relay.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": true,
+      "parsed": {
+        "relay_host": "relay",
+        "room": "QkF6e-ZNRW8V6NXMuzu1bw",
+        "join_token": "mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM",
+        "invite_key": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+        "invite_pub": {
+          "crv": "P-256",
+          "kty": "EC",
+          "x": "roZ30JAnSnoZ_yeSPShX4J-UynBVEscWNMb1eQTPv_0",
+          "y": "_ZgawA1kVTVBSqJGY_9YV_2WliwM6XGljFuJyVtuNR8"
+        }
+      },
+      "relay_base_url": "https://relay"
+    },
+    {
+      "name": "the fragment pasted alone",
+      "text": "v1.relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": true,
+      "parsed": {
+        "relay_host": "relay.example",
+        "room": "QkF6e-ZNRW8V6NXMuzu1bw",
+        "join_token": "mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM",
+        "invite_key": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+        "invite_pub": {
+          "crv": "P-256",
+          "kty": "EC",
+          "x": "roZ30JAnSnoZ_yeSPShX4J-UynBVEscWNMb1eQTPv_0",
+          "y": "_ZgawA1kVTVBSqJGY_9YV_2WliwM6XGljFuJyVtuNR8"
+        }
+      },
+      "relay_base_url": "https://relay.example"
+    },
+    {
+      "name": "a host with many labels and a hyphen",
+      "text": "https://app.example/j#v1.a-b.c.relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": true,
+      "parsed": {
+        "relay_host": "a-b.c.relay.example",
+        "room": "QkF6e-ZNRW8V6NXMuzu1bw",
+        "join_token": "mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM",
+        "invite_key": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+        "invite_pub": {
+          "crv": "P-256",
+          "kty": "EC",
+          "x": "roZ30JAnSnoZ_yeSPShX4J-UynBVEscWNMb1eQTPv_0",
+          "y": "_ZgawA1kVTVBSqJGY_9YV_2WliwM6XGljFuJyVtuNR8"
+        }
+      },
+      "relay_base_url": "https://a-b.c.relay.example"
+    },
+    {
+      "name": "version 2",
+      "text": "https://app.example/j#v2.relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "a host in uppercase",
+      "text": "https://app.example/j#v1.Relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "an empty host label",
+      "text": "https://app.example/j#v1.relay..example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "a host with an underscore",
+      "text": "https://app.example/j#v1.re_lay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "an IPv6 literal",
+      "text": "https://app.example/j#v1.[2001:db8::1]:8443.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "port 0",
+      "text": "https://app.example/j#v1.relay.example:0.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "port 65536",
+      "text": "https://app.example/j#v1.relay.example:65536.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "a port with a leading zero",
+      "text": "https://app.example/j#v1.relay.example:08443.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "no host",
+      "text": "https://app.example/j#v1.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "a room id of 21 characters",
+      "text": "https://app.example/j#v1.relay.example.QkF6e-ZNRW8V6NXMuzu1b.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "a join token with padding",
+      "text": "https://app.example/j#v1.relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM=.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "a join token of 42 characters",
+      "text": "https://app.example/j#v1.relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3f.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf",
+      "valid": false
+    },
+    {
+      "name": "a trailing dot",
+      "text": "https://app.example/j#v1.relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEtebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4ihRANCAASuhnfQkCdKehn_J5I9KFfgn5TKcFUSxxY0xvV5BM-__f2YGsANZFU1QUqiRmP_WFf9lpYsDOlxpYxbiclbbjUf.",
+      "valid": false
+    },
+    {
+      "name": "an invite key that is the raw 32-byte scalar",
+      "text": "https://app.example/j#v1.relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.Etebk6UESyP9YdpkhRKaS_xjI99_oE7nkp7OJZU6u4g",
+      "valid": false
+    },
+    {
+      "name": "an invite key on P-384",
+      "text": "https://app.example/j#v1.relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDAAAAAAAAAAAAAAAAAAAAAAUocOW4cEA4DNJ1UvfT8Q7gqtWvxlbgZyjTWB6ATP4H-hZANiAARw7mjA6iMO_8K1kTS5aIgHbdNu7_q5UHoxwyrSKfN9T6u5ZMSHtc0KV5gJlNkjqbA6cmUrP2izOlhJB8gubBd_RWap6k9ibhPJV9s6YcRpfw8hBHs5rXjUeb-bviib8HU",
+      "valid": false
+    },
+    {
+      "name": "an invite key without its public key",
+      "text": "https://app.example/j#v1.relay.example.QkF6e-ZNRW8V6NXMuzu1bw.mtwcsl2qcMKBEr2_agCAiedK8yBpKOLhzyVF8pKR3fM.MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCAS15uTpQRLI_1h2mSFEppL_GMj33-gTueSns4llTq7iA",
+      "valid": false
+    }
+  ]
+}
