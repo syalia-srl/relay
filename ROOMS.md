@@ -130,8 +130,8 @@ wrapped for. Members decide who is in the room from the signed roster (section 4
 | an owner | A device whose role in the relay's view is owner. |
 
 A custodian device MAY call every device route except `POST /epochs`,
-`POST /messages`, `PUT` and `GET /blobs`: it holds no epoch key, and the relay answers
-these with 403.
+`GET` and `POST /messages`, `PUT` and `GET /blobs`: it holds no epoch key, and the
+relay answers these with 403.
 
 ### 3.3 Answers and errors
 
@@ -429,9 +429,10 @@ a device the roster still lists, and clients follow the roster.
 
 Room content is encrypted under epoch keys: 32 random bytes, used as an AES-256-GCM
 key. Epochs are numbered from 1. The creator posts epoch 1 right after the genesis
-record. A device MUST create a new epoch after every join it sees (the joiner does it
-for its own join), every removal and every approval, and MUST NOT use an epoch key for
-a device that has left.
+record. A new epoch follows every join, removal and approval: the joiner creates it
+for its own join, and the owner that appends a `remove` or `approve` creates it for
+that record. Any device that sees such a record not yet followed by an epoch MAY
+create one. No device sends with an epoch key that a device that has left holds.
 
 An epoch is `{"n", "creator", "wraps", "sig"}`. `wraps` maps the id of every active
 device of kind `device` in the creator's verified roster, the creator included, to a
