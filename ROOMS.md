@@ -235,14 +235,14 @@ above `after` (0 when absent), in order. Each record is what was posted, plus
 clients use the signing device named inside the entry (section 4.2), never `signer`.
 **`POST …/roster`** (a device) appends one record. The relay checks only that `n` is
 the last plus one (409 otherwise), that `entry` is an object and `sig` and `prev`
-strings, and that the record is at most 64 KiB (413). Record 1 marks the room as set
-up.
+strings, and that the record is at most 64 KiB (413), and answers 201 `{"n": n}`.
+Record 1 marks the room as set up.
 
 **`POST /v1/rooms/{id}/epochs`** (a device, not the custodian) appends epoch `n`,
 which MUST be the last plus one (409 otherwise). `roster` MUST be an integer of at
 least 0 (400 otherwise); the relay stores it as given and checks nothing else about it.
 `creator` MUST be the calling device's id (403 otherwise). `wraps` maps device ids to
-wraps; the relay does not check them. **`GET …/epochs?after=<n>`** returns
+wraps; the relay does not check them. It answers 201 `{"n": n}`. **`GET …/epochs?after=<n>`** returns
 `{"epochs": [{"n", "roster", "creator", "wraps", "sig"}...]}` in order.
 
 **`POST /v1/rooms/{id}/owners`** (an owner) sets the role of a device of the room in
@@ -263,12 +263,14 @@ returns the messages with a sequence above `after`, oldest first, at most `limit
 optional `blob` (a blob id), and answers 201 `{"seq": n}`. The sequence is the room's
 next, assigned in one transaction, so no two messages share one. A repeated `cid` from
 the same device returns the first message's sequence with 200 and stores nothing: a
-client retries with the same `cid`. The relay checks the form of each field and
-nothing else; a client PUTs a message's blob before it posts the message.
+client retries with the same `cid`, and this holds on a read-only room too, since it
+stores nothing. The relay checks the form of each field and nothing else, so it takes
+a message whose `blob` it does not hold; a client PUTs a message's blob before it
+posts the message.
 
 **`PUT /v1/rooms/{id}/blobs/{blob}`** (a device, not the custodian) stores the request
-body as the blob, with `blob` a client id: 201, 413 above `blob_bytes`, 409 when the
-id is taken. **`GET …/blobs/{blob}`** returns the bytes, 404 when not held.
+body as the blob, with `blob` a client id: 201 with no body, 413 above `blob_bytes`,
+409 when the id is taken, even by the same bytes from the same device. **`GET …/blobs/{blob}`** returns the bytes, 404 when not held.
 
 **`POST /v1/rooms/{id}/ack`** (a device) records `seq` as the highest sequence the
 device holds, if it is higher than the one recorded, and the time as its
@@ -302,17 +304,20 @@ and a client that missed one loses nothing, since it fetches from its last seque
 - A message or blob is deleted once every device of kind `device` that acked within
   the last 14 days has acked past it, or once it is older than the room's
   `retention_days`, whichever comes first. A device that has not acked for 14 days
-  stops holding anything back. A blob counts as past an ack when the message that
+  stops holding anything back; a device that has never acked counts from the time it
+  joined. A blob counts as past an ack when the message that
   names it is; a blob no message names is deleted after 1 day.
 - A write that would take the room over `max_bytes`, or the credential over its stored
   bytes, is refused with 507 and stores nothing. One full room leaves the credential's
   other rooms working.
 - A credential is gone when its operator key leaves the keys file, when the latest
-  relay token the relay has seen for its `(iss, sub)` has expired, or when it no longer
+  relay token the relay has seen for its `(iss, sub)` has expired (the latest is the one
+  with the highest expiry, so presenting an older token shortens nothing), or when it no longer
   carries a room quota. Its rooms are then read-only from that moment, as
   `read_only_since`: reads, acks, removals and deletion still work, and every other
-  write answers 423. Presenting the credential again with a room quota, at any credential
-  route, ends it. A room read-only for 30 days is deleted.
+  write answers 423, closing an invite and setting a push token included. Presenting
+  the credential again with a room quota, at any credential route, ends it; an operator
+  key put back in the keys file stays read-only until it is presented. A room read-only for 30 days is deleted.
 - A relay MUST keep rooms, devices, invites, roster records, epochs, messages and blobs
   across restarts, in storage only the relay can read, with tokens kept as digests.
 
