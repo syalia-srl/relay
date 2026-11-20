@@ -1,0 +1,372 @@
+{
+  "description": "ROOMS.md 4.5: messages under epoch 2 as GET /messages returns them, their plaintext, additional data and signed canonical JSON. Fixed IVs make the bytes reproducible. `refused` messages fail to open, after the roster and epoch of rooms_epoch.json. `counters` gives a receiver's per-device state {n, seq}, the watermark of the answer, the messages in sequence order, and what the receiver does with each, the gaps it reports and its state afterwards.",
+  "room": "QkF6e-ZNRW8V6NXMuzu1bw",
+  "epoch": 2,
+  "epoch_key": "17822f851c4b837ef7049382c439c3c116aea90b9e54056711c8f75957ab72b0",
+  "senders": {
+    "CeQrC2Xp-az0c8F2VtoNCg": {
+      "crv": "P-256",
+      "kty": "EC",
+      "x": "J0lFFsQKZ2AVPrN89LhsFB54vAEhQdxCKZGc5sem87I",
+      "y": "FZXTlBrMeF26SDzdjK-jRFMtnYhqH9B3locY_LKfoZc"
+    },
+    "zPawjYFPq7Q5evadaSFuFA": {
+      "crv": "P-256",
+      "kty": "EC",
+      "x": "OC2Soz5mYXO3eJ_Rng_mfzhFMj06WLn_f7KfqMO7QkY",
+      "y": "rY9m_NRYAZPPbyk-a_2eVa-6R_s6POwQxwdOCUwGW_A"
+    },
+    "ba4SHYzT1BKkmZKsD5gHFA": {
+      "crv": "P-256",
+      "kty": "EC",
+      "x": "leCl3o332RKcqKrN24DxOvp0mBpz4fJ4-km6Qf4jHJE",
+      "y": "gpIuk0RaSlat0FT07YA8pnVxiS2FcxvqiZ_gY2vnRMI"
+    }
+  },
+  "cases": [
+    {
+      "message": {
+        "seq": 1,
+        "device": "CeQrC2Xp-az0c8F2VtoNCg",
+        "cid": "cKfQG4Fsd9DGvH8xQGRT9g",
+        "epoch": 2,
+        "n": 1,
+        "iv": "pxbpL-IhhWYJzWBM",
+        "ct": "xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3",
+        "sig": "rydbVYJw-FWE9dYNopkIRFs2YlLOL5NnMIISv3hCWSRQ-gZZjQ6ytJZ_bSziFs4MfGpb-KqIMNw6OKjG4PgIDw",
+        "at": 1800000401
+      },
+      "plaintext": "7b2274797065223a2274657874222c22626f6479223a22686f6c61227d",
+      "additional_data": "relay-msg-1|QkF6e-ZNRW8V6NXMuzu1bw|2|CeQrC2Xp-az0c8F2VtoNCg|1",
+      "signed_canonical": "{\"ct\":\"xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3\",\"device\":\"CeQrC2Xp-az0c8F2VtoNCg\",\"epoch\":2,\"iv\":\"pxbpL-IhhWYJzWBM\",\"n\":1,\"room\":\"QkF6e-ZNRW8V6NXMuzu1bw\",\"v\":\"relay-msg-1\"}"
+    },
+    {
+      "message": {
+        "seq": 2,
+        "device": "zPawjYFPq7Q5evadaSFuFA",
+        "cid": "eta6YyW3D9fYTZuq7h4CiA",
+        "epoch": 2,
+        "n": 1,
+        "iv": "tdGL7KkdxaS6Iw4y",
+        "ct": "XGw8IEfDg14wvbAwzYaw-7VACrl7h_X2b0CknYxJ1MLqKWCkGqKb6RyIlf8zed_zcHEX4Yo8Nvo",
+        "sig": "whEo7k8ZDJPkvQE7imeeB0pSt3tVV0UdtHhNrQroXGp5wDWOIGwumGQeraYp_AqIzQRb1DH1r_3hYPdzHFMeiQ",
+        "at": 1800000402
+      },
+      "plaintext": "7b2274797065223a2274657874222c22626f6479223a226275656e61732c20c3b1616e64c3ba227d",
+      "additional_data": "relay-msg-1|QkF6e-ZNRW8V6NXMuzu1bw|2|zPawjYFPq7Q5evadaSFuFA|1",
+      "signed_canonical": "{\"ct\":\"XGw8IEfDg14wvbAwzYaw-7VACrl7h_X2b0CknYxJ1MLqKWCkGqKb6RyIlf8zed_zcHEX4Yo8Nvo\",\"device\":\"zPawjYFPq7Q5evadaSFuFA\",\"epoch\":2,\"iv\":\"tdGL7KkdxaS6Iw4y\",\"n\":1,\"room\":\"QkF6e-ZNRW8V6NXMuzu1bw\",\"v\":\"relay-msg-1\"}"
+    },
+    {
+      "message": {
+        "seq": 3,
+        "device": "CeQrC2Xp-az0c8F2VtoNCg",
+        "cid": "_BuF-kHJ1D5ASI_pw6aorg",
+        "epoch": 2,
+        "n": 2,
+        "iv": "7hVxaV6eXQePJlsa",
+        "ct": "osNJB19IjO7OU3l29SPZMn3ecWFYGywBECwvCT4brpmzcPRg2gOsi_Zq_SJyA1g3tQ",
+        "blob": "n1MFeJNRi3iGm5zP6yIwww",
+        "sig": "7v0tPF02oPTFtdjzS9rq2ZOohrgvid4Sok7_8W7AKBnD6UDHYkPNmQLhejduDfwXSTjd-LPhNALwn1U0YWWxkQ",
+        "at": 1800000403
+      },
+      "plaintext": "7b2274797065223a2266696c65222c226e616d65223a22706c616e2e706466227d",
+      "additional_data": "relay-msg-1|QkF6e-ZNRW8V6NXMuzu1bw|2|CeQrC2Xp-az0c8F2VtoNCg|2",
+      "signed_canonical": "{\"blob\":\"n1MFeJNRi3iGm5zP6yIwww\",\"ct\":\"osNJB19IjO7OU3l29SPZMn3ecWFYGywBECwvCT4brpmzcPRg2gOsi_Zq_SJyA1g3tQ\",\"device\":\"CeQrC2Xp-az0c8F2VtoNCg\",\"epoch\":2,\"iv\":\"7hVxaV6eXQePJlsa\",\"n\":2,\"room\":\"QkF6e-ZNRW8V6NXMuzu1bw\",\"v\":\"relay-msg-1\"}"
+    }
+  ],
+  "refused": [
+    {
+      "name": "a signature with one bit flipped",
+      "message": {
+        "seq": 1,
+        "device": "CeQrC2Xp-az0c8F2VtoNCg",
+        "cid": "cKfQG4Fsd9DGvH8xQGRT9g",
+        "epoch": 2,
+        "n": 1,
+        "iv": "pxbpL-IhhWYJzWBM",
+        "ct": "xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3",
+        "sig": "rydbVIJw-FWE9dYNopkIRFs2YlLOL5NnMIISv3hCWSRQ-gZZjQ6ytJZ_bSziFs4MfGpb-KqIMNw6OKjG4PgIDw",
+        "at": 1800000401
+      },
+      "reason": "signature"
+    },
+    {
+      "name": "relabelled as another device's",
+      "message": {
+        "seq": 1,
+        "device": "zPawjYFPq7Q5evadaSFuFA",
+        "cid": "cKfQG4Fsd9DGvH8xQGRT9g",
+        "epoch": 2,
+        "n": 1,
+        "iv": "pxbpL-IhhWYJzWBM",
+        "ct": "xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3",
+        "sig": "rydbVYJw-FWE9dYNopkIRFs2YlLOL5NnMIISv3hCWSRQ-gZZjQ6ytJZ_bSziFs4MfGpb-KqIMNw6OKjG4PgIDw",
+        "at": 1800000401
+      },
+      "reason": "signature"
+    },
+    {
+      "name": "its counter changed",
+      "message": {
+        "seq": 1,
+        "device": "CeQrC2Xp-az0c8F2VtoNCg",
+        "cid": "cKfQG4Fsd9DGvH8xQGRT9g",
+        "epoch": 2,
+        "n": 7,
+        "iv": "pxbpL-IhhWYJzWBM",
+        "ct": "xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3",
+        "sig": "rydbVYJw-FWE9dYNopkIRFs2YlLOL5NnMIISv3hCWSRQ-gZZjQ6ytJZ_bSziFs4MfGpb-KqIMNw6OKjG4PgIDw",
+        "at": 1800000401
+      },
+      "reason": "signature"
+    },
+    {
+      "name": "under an epoch the receiver does not have",
+      "message": {
+        "seq": 1,
+        "device": "CeQrC2Xp-az0c8F2VtoNCg",
+        "cid": "cKfQG4Fsd9DGvH8xQGRT9g",
+        "epoch": 3,
+        "n": 1,
+        "iv": "pxbpL-IhhWYJzWBM",
+        "ct": "xKqBqHYAhzfdlqgj1dvXbZv9Kn5RW46RtV8XlTDOx7AtjO4QOXJHJfx3NCX3",
+        "sig": "rydbVYJw-FWE9dYNopkIRFs2YlLOL5NnMIISv3hCWSRQ-gZZjQ6ytJZ_bSziFs4MfGpb-KqIMNw6OKjG4PgIDw",
+        "at": 1800000401
+      },
+      "reason": "epoch"
+    },
+    {
+      "name": "from a device the epoch was not wrapped for (the custodian)",
+      "message": {
+        "seq": 4,
+        "device": "ba4SHYzT1BKkmZKsD5gHFA",
+        "cid": "nvHCQ_h0MFYt2Gd7lKLQRA",
+        "epoch": 2,
+        "n": 1,
+        "iv": "0cUtUNFCk92AXos0",
+        "ct": "ui_xgueE8zE_RGz-JCRGSws6FWZjY5-7SffpOcoMXUD2Tj0di5JgO_54",
+        "sig": "B0E4LYz5GREqBu1fteYkU30210IZS35eZCFz9Dv8TTZYmscj_2lAinXt4waMJrx-w8_UEubKHYDK6jrHV6WFMQ",
+        "at": 1800000404
+      },
+      "reason": "not_wrapped"
+    },
+    {
+      "name": "sealed by its sender with another device's additional data",
+      "message": {
+        "seq": 5,
+        "device": "CeQrC2Xp-az0c8F2VtoNCg",
+        "cid": "8rEMFPzxEhVmotnbH3aIVQ",
+        "epoch": 2,
+        "n": 3,
+        "iv": "6RD_A9mKL0qDYOY-",
+        "ct": "C43tRCK0g5w7dyLjXsY_60nBE5ZUM9PmTIPwrpXWsZhOTevosq4-AI47",
+        "sig": "lyICoaJXYO30dXWE982JtbbhZKTobKU8YL-ZTZNd_3yREuWq5ICUVtKKmAmuEL7b8zTi8lij5ETbQABaLxx3Wg",
+        "at": 1800000405
+      },
+      "reason": "decrypt"
+    }
+  ],
+  "counters": [
+    {
+      "name": "in order",
+      "state": {},
+      "watermark": 1,
+      "messages": [
+        {
+          "seq": 1,
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "n": 1
+        },
+        {
+          "seq": 2,
+          "device": "zPawjYFPq7Q5evadaSFuFA",
+          "n": 1
+        },
+        {
+          "seq": 3,
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "n": 2
+        }
+      ],
+      "results": [
+        "accept",
+        "accept",
+        "accept"
+      ],
+      "gaps": [],
+      "state_after": {
+        "CeQrC2Xp-az0c8F2VtoNCg": {
+          "n": 2,
+          "seq": 3
+        },
+        "zPawjYFPq7Q5evadaSFuFA": {
+          "n": 1,
+          "seq": 2
+        }
+      }
+    },
+    {
+      "name": "a replayed counter is dropped",
+      "state": {
+        "CeQrC2Xp-az0c8F2VtoNCg": {
+          "n": 2,
+          "seq": 3
+        }
+      },
+      "watermark": 1,
+      "messages": [
+        {
+          "seq": 4,
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "n": 2
+        },
+        {
+          "seq": 5,
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "n": 3
+        },
+        {
+          "seq": 6,
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "n": 3
+        }
+      ],
+      "results": [
+        "drop",
+        "accept",
+        "drop"
+      ],
+      "gaps": [],
+      "state_after": {
+        "CeQrC2Xp-az0c8F2VtoNCg": {
+          "n": 3,
+          "seq": 5
+        }
+      }
+    },
+    {
+      "name": "a gap the relay still owes",
+      "state": {
+        "CeQrC2Xp-az0c8F2VtoNCg": {
+          "n": 2,
+          "seq": 3
+        }
+      },
+      "watermark": 1,
+      "messages": [
+        {
+          "seq": 5,
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "n": 4
+        }
+      ],
+      "results": [
+        "accept"
+      ],
+      "gaps": [
+        {
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "after_n": 2,
+          "before_n": 4,
+          "cause": "missing"
+        }
+      ],
+      "state_after": {
+        "CeQrC2Xp-az0c8F2VtoNCg": {
+          "n": 4,
+          "seq": 5
+        }
+      }
+    },
+    {
+      "name": "a gap below the watermark was deleted by age",
+      "state": {
+        "CeQrC2Xp-az0c8F2VtoNCg": {
+          "n": 2,
+          "seq": 3
+        }
+      },
+      "watermark": 10,
+      "messages": [
+        {
+          "seq": 12,
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "n": 5
+        }
+      ],
+      "results": [
+        "accept"
+      ],
+      "gaps": [
+        {
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "after_n": 2,
+          "before_n": 5,
+          "cause": "expired"
+        }
+      ],
+      "state_after": {
+        "CeQrC2Xp-az0c8F2VtoNCg": {
+          "n": 5,
+          "seq": 12
+        }
+      }
+    },
+    {
+      "name": "a watermark just past the last seen sequence still owes the gap",
+      "state": {
+        "CeQrC2Xp-az0c8F2VtoNCg": {
+          "n": 2,
+          "seq": 3
+        }
+      },
+      "watermark": 4,
+      "messages": [
+        {
+          "seq": 6,
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "n": 4
+        }
+      ],
+      "results": [
+        "accept"
+      ],
+      "gaps": [
+        {
+          "device": "CeQrC2Xp-az0c8F2VtoNCg",
+          "after_n": 2,
+          "before_n": 4,
+          "cause": "missing"
+        }
+      ],
+      "state_after": {
+        "CeQrC2Xp-az0c8F2VtoNCg": {
+          "n": 4,
+          "seq": 6
+        }
+      }
+    },
+    {
+      "name": "the first message seen from a device sets its baseline",
+      "state": {},
+      "watermark": 1,
+      "messages": [
+        {
+          "seq": 9,
+          "device": "zPawjYFPq7Q5evadaSFuFA",
+          "n": 7
+        }
+      ],
+      "results": [
+        "accept"
+      ],
+      "gaps": [],
+      "state_after": {
+        "zPawjYFPq7Q5evadaSFuFA": {
+          "n": 7,
+          "seq": 9
+        }
+      }
+    }
+  ]
+}

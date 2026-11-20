@@ -1,0 +1,222 @@
+{
+  "description": "ROOMS.md 2: canonical JSON (sorted keys, no spaces, UTF-8, non-ASCII unescaped), ECDSA P-256 SHA-256 signatures as 64 raw bytes r||s over the canonical JSON, base64url without padding, and the reduction of a JWK to kty, crv, x, y. A verifier accepts either s or n - s.",
+  "canonical": [
+    {
+      "object": {
+        "b": 1,
+        "a": [
+          true,
+          false,
+          null
+        ],
+        "c": {
+          "z": "",
+          "y": "x"
+        }
+      },
+      "canonical": "{\"a\":[true,false,null],\"b\":1,\"c\":{\"y\":\"x\",\"z\":\"\"}}"
+    },
+    {
+      "object": {
+        "v": "relay-roster-1",
+        "n": 2,
+        "prev": "",
+        "entry": {
+          "kind": "invite"
+        }
+      },
+      "canonical": "{\"entry\":{\"kind\":\"invite\"},\"n\":2,\"prev\":\"\",\"v\":\"relay-roster-1\"}"
+    },
+    {
+      "object": {
+        "text": "\u00f1and\u00fa \u00abs\u00ed\u00bb \u2028 \"q\" \\ \n\t\u0001 \ud83d\ude00"
+      },
+      "canonical": "{\"text\":\"\u00f1and\u00fa \u00abs\u00ed\u00bb \u2028 \\\"q\\\" \\\\ \\n\\t\\u0001 \ud83d\ude00\"}"
+    },
+    {
+      "object": {
+        "n": 9007199254740991,
+        "empty": {},
+        "list": []
+      },
+      "canonical": "{\"empty\":{},\"list\":[],\"n\":9007199254740991}"
+    }
+  ],
+  "signatures": [
+    {
+      "name": "valid",
+      "public_jwk": {
+        "crv": "P-256",
+        "kty": "EC",
+        "x": "RjnGZ9Y6UpiCE353lwLVEUzkTrxqr-vxV-mjbtmV7ag",
+        "y": "YYfLf0T40mTsbisuj0opUAVXs9GhJvCc6WQpOnRS2o4"
+      },
+      "object": {
+        "v": "relay-roster-1",
+        "n": 2,
+        "prev": "",
+        "entry": {
+          "kind": "invite"
+        }
+      },
+      "sig": "HWls0knnk053btMo1Uq6Eu5tt5oFPcagmwleWxAi5UvPZdMSYwI6pB5Dn6-lMBoLmqJ_r-VAeEL6U1zKd4rxOA",
+      "valid": true
+    },
+    {
+      "name": "the same signature with s replaced by n - s",
+      "public_jwk": {
+        "crv": "P-256",
+        "kty": "EC",
+        "x": "RjnGZ9Y6UpiCE353lwLVEUzkTrxqr-vxV-mjbtmV7ag",
+        "y": "YYfLf0T40mTsbisuj0opUAVXs9GhJvCc6WQpOnRS2o4"
+      },
+      "object": {
+        "v": "relay-roster-1",
+        "n": 2,
+        "prev": "",
+        "entry": {
+          "kind": "invite"
+        }
+      },
+      "sig": "HWls0knnk053btMo1Uq6Eu5tt5oFPcagmwleWxAi5UswmizsnP3FXOG8YFBaz-X0IkR6_cHXJkH5Zm34hNg0GQ",
+      "valid": true
+    },
+    {
+      "name": "one bit flipped",
+      "public_jwk": {
+        "crv": "P-256",
+        "kty": "EC",
+        "x": "RjnGZ9Y6UpiCE353lwLVEUzkTrxqr-vxV-mjbtmV7ag",
+        "y": "YYfLf0T40mTsbisuj0opUAVXs9GhJvCc6WQpOnRS2o4"
+      },
+      "object": {
+        "v": "relay-roster-1",
+        "n": 2,
+        "prev": "",
+        "entry": {
+          "kind": "invite"
+        }
+      },
+      "sig": "HWls0knnk053btMo1Uq6Eu5tt5oFPcagmwleWxAi5UvPZdMSYwI6pB9Dn6-lMBoLmqJ_r-VAeEL6U1zKd4rxOA",
+      "valid": false
+    },
+    {
+      "name": "another key",
+      "public_jwk": {
+        "crv": "P-256",
+        "kty": "EC",
+        "x": "emPbS2ZcEKkHgMsVPUcmKzWqjap4xCDOnhK6h3XuOXo",
+        "y": "Gv_apI12fAomFbGoocDq60KJvzutwdPT4B9dP_hHMJc"
+      },
+      "object": {
+        "v": "relay-roster-1",
+        "n": 2,
+        "prev": "",
+        "entry": {
+          "kind": "invite"
+        }
+      },
+      "sig": "HWls0knnk053btMo1Uq6Eu5tt5oFPcagmwleWxAi5UvPZdMSYwI6pB5Dn6-lMBoLmqJ_r-VAeEL6U1zKd4rxOA",
+      "valid": false
+    },
+    {
+      "name": "63 bytes",
+      "public_jwk": {
+        "crv": "P-256",
+        "kty": "EC",
+        "x": "RjnGZ9Y6UpiCE353lwLVEUzkTrxqr-vxV-mjbtmV7ag",
+        "y": "YYfLf0T40mTsbisuj0opUAVXs9GhJvCc6WQpOnRS2o4"
+      },
+      "object": {
+        "v": "relay-roster-1",
+        "n": 2,
+        "prev": "",
+        "entry": {
+          "kind": "invite"
+        }
+      },
+      "sig": "HWls0knnk053btMo1Uq6Eu5tt5oFPcagmwleWxAi5UvPZdMSYwI6pB5Dn6-lMBoLmqJ_r-VAeEL6U1zKd4rx",
+      "valid": false
+    },
+    {
+      "name": "DER instead of r||s",
+      "public_jwk": {
+        "crv": "P-256",
+        "kty": "EC",
+        "x": "RjnGZ9Y6UpiCE353lwLVEUzkTrxqr-vxV-mjbtmV7ag",
+        "y": "YYfLf0T40mTsbisuj0opUAVXs9GhJvCc6WQpOnRS2o4"
+      },
+      "object": {
+        "v": "relay-roster-1",
+        "n": 2,
+        "prev": "",
+        "entry": {
+          "kind": "invite"
+        }
+      },
+      "sig": "MEUCIB1pbNJJ55NOd27TKNVKuhLubbeaBT3GoJsJXlsQIuVLAiEAz2XTEmMCOqQeQ5-vpTAaC5qif6_lQHhC-lNcyneK8Tg",
+      "valid": false
+    },
+    {
+      "name": "base64 padding",
+      "public_jwk": {
+        "crv": "P-256",
+        "kty": "EC",
+        "x": "RjnGZ9Y6UpiCE353lwLVEUzkTrxqr-vxV-mjbtmV7ag",
+        "y": "YYfLf0T40mTsbisuj0opUAVXs9GhJvCc6WQpOnRS2o4"
+      },
+      "object": {
+        "v": "relay-roster-1",
+        "n": 2,
+        "prev": "",
+        "entry": {
+          "kind": "invite"
+        }
+      },
+      "sig": "HWls0knnk053btMo1Uq6Eu5tt5oFPcagmwleWxAi5UvPZdMSYwI6pB5Dn6-lMBoLmqJ_r-VAeEL6U1zKd4rxOA=",
+      "valid": false
+    },
+    {
+      "name": "a JWK with extra members is reduced first",
+      "public_jwk": {
+        "crv": "P-256",
+        "kty": "EC",
+        "x": "RjnGZ9Y6UpiCE353lwLVEUzkTrxqr-vxV-mjbtmV7ag",
+        "y": "YYfLf0T40mTsbisuj0opUAVXs9GhJvCc6WQpOnRS2o4",
+        "ext": true,
+        "key_ops": [
+          "verify"
+        ]
+      },
+      "object": {
+        "v": "relay-roster-1",
+        "n": 2,
+        "prev": "",
+        "entry": {
+          "kind": "invite"
+        }
+      },
+      "sig": "HWls0knnk053btMo1Uq6Eu5tt5oFPcagmwleWxAi5UvPZdMSYwI6pB5Dn6-lMBoLmqJ_r-VAeEL6U1zKd4rxOA",
+      "valid": true
+    }
+  ],
+  "public_jwk": {
+    "jwk": {
+      "crv": "P-256",
+      "kty": "EC",
+      "x": "RjnGZ9Y6UpiCE353lwLVEUzkTrxqr-vxV-mjbtmV7ag",
+      "y": "YYfLf0T40mTsbisuj0opUAVXs9GhJvCc6WQpOnRS2o4",
+      "d": "uG1Olnrd3tCQTg03oGj4WHAfwD_QsAQhab3D4vsjyGg",
+      "ext": true,
+      "key_ops": [
+        "sign"
+      ]
+    },
+    "reduced": {
+      "crv": "P-256",
+      "kty": "EC",
+      "x": "RjnGZ9Y6UpiCE353lwLVEUzkTrxqr-vxV-mjbtmV7ag",
+      "y": "YYfLf0T40mTsbisuj0opUAVXs9GhJvCc6WQpOnRS2o4"
+    }
+  }
+}

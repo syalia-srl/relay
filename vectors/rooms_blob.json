@@ -1,0 +1,55 @@
+{
+  "description": "ROOMS.md 4.6: blobs sealed under an epoch key. The body PUT to the relay is the 12-byte IV followed by the AES-256-GCM ciphertext and tag. Large values are given by digest. `refused` bodies fail to open.",
+  "room": "QkF6e-ZNRW8V6NXMuzu1bw",
+  "epoch_key": "17822f851c4b837ef7049382c439c3c116aea90b9e54056711c8f75957ab72b0",
+  "cases": [
+    {
+      "name": "a short file",
+      "blob": "F1s82csFlvyJW1psguFroQ",
+      "iv": "625c5ab680aa22221d016c54",
+      "additional_data": "relay-blob-1|QkF6e-ZNRW8V6NXMuzu1bw|F1s82csFlvyJW1psguFroQ",
+      "plaintext": "255044462d312e372068656c6c6f",
+      "body": "625c5ab680aa22221d016c5447f9dd168af127ac57d671a465589d40a182db8aa191ed60c01baebe8c5c"
+    },
+    {
+      "name": "an empty file",
+      "blob": "iKLpgbYVNchRWqeHFJBD_Q",
+      "iv": "d79dbe04c16b91476c1bd092",
+      "additional_data": "relay-blob-1|QkF6e-ZNRW8V6NXMuzu1bw|iKLpgbYVNchRWqeHFJBD_Q",
+      "plaintext": "",
+      "body": "d79dbe04c16b91476c1bd092fb8b86a2c47b77d3c6ffa1e114e6a75c"
+    },
+    {
+      "name": "70000 bytes",
+      "blob": "ItzhReb81_y7lz-ACIOIyQ",
+      "iv": "76cbf14dd72a2251b6000dba",
+      "additional_data": "relay-blob-1|QkF6e-ZNRW8V6NXMuzu1bw|ItzhReb81_y7lz-ACIOIyQ",
+      "plaintext": {
+        "sha256": "9dc177c2fde29dea8e7c29f7ddf147b7c449c99d049c62f3aac0a5933ecf76a3",
+        "length": 70000,
+        "content": "byte i is i mod 251"
+      },
+      "body": {
+        "sha256": "bd119e1843fa44b66202342ce0acd0fd7a3d1520b3ff6e2ad621a4fa6a56f163",
+        "length": 70028
+      }
+    }
+  ],
+  "refused": [
+    {
+      "name": "read under another blob id",
+      "blob": "aeviLPGJ4wEfkfW3RCLL7g",
+      "body": "625c5ab680aa22221d016c5447f9dd168af127ac57d671a465589d40a182db8aa191ed60c01baebe8c5c"
+    },
+    {
+      "name": "one bit flipped in the tag",
+      "blob": "F1s82csFlvyJW1psguFroQ",
+      "body": "625c5ab680aa22221d016c5447f9dd168af127ac57d671a465589d40a182db8aa191ed60c01baebe8c5d"
+    },
+    {
+      "name": "truncated to the IV and 15 bytes",
+      "blob": "F1s82csFlvyJW1psguFroQ",
+      "body": "625c5ab680aa22221d016c5447f9dd168af127ac57d671a465589d"
+    }
+  ]
+}

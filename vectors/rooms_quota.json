@@ -1,0 +1,300 @@
+{
+  "description": "PROTOCOL.md 2.2 and ROOMS.md 3.1: the room quota a keys.json entry or a verified rt1 payload gives (null: none, POST /v1/rooms answers 403), and the limits of a room created with `request` under the quota of the first case (null: 400).",
+  "credentials": [
+    {
+      "name": "a key with a room quota",
+      "keys_entry": {
+        "id": "install",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000,
+        "rooms": {
+          "max": 200,
+          "stored_bytes": 20000000000,
+          "retention_days": 30,
+          "blob_bytes": 52428800
+        }
+      },
+      "room_quota": {
+        "max": 200,
+        "stored_bytes": 20000000000,
+        "retention_days": 30,
+        "blob_bytes": 52428800
+      }
+    },
+    {
+      "name": "a key without rooms",
+      "keys_entry": {
+        "id": "install",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000
+      },
+      "room_quota": null
+    },
+    {
+      "name": "rooms.max 0",
+      "keys_entry": {
+        "id": "install",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000,
+        "rooms": {
+          "max": 0,
+          "stored_bytes": 20000000000,
+          "retention_days": 30,
+          "blob_bytes": 52428800
+        }
+      },
+      "room_quota": null
+    },
+    {
+      "name": "rooms without blob_bytes",
+      "keys_entry": {
+        "id": "install",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000,
+        "rooms": {
+          "max": 200,
+          "stored_bytes": 20000000000,
+          "retention_days": 30
+        }
+      },
+      "room_quota": null
+    },
+    {
+      "name": "rooms.stored_bytes as a string",
+      "keys_entry": {
+        "id": "install",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000,
+        "rooms": {
+          "max": 200,
+          "stored_bytes": "1",
+          "retention_days": 30,
+          "blob_bytes": 52428800
+        }
+      },
+      "room_quota": null
+    },
+    {
+      "name": "rooms.retention_days 0",
+      "keys_entry": {
+        "id": "install",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000,
+        "rooms": {
+          "max": 200,
+          "stored_bytes": 20000000000,
+          "retention_days": 0,
+          "blob_bytes": 52428800
+        }
+      },
+      "room_quota": null
+    },
+    {
+      "name": "unlimited without rooms",
+      "keys_entry": {
+        "id": "local",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "unlimited": true
+      },
+      "room_quota": null
+    },
+    {
+      "name": "unlimited with rooms",
+      "keys_entry": {
+        "id": "local",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "unlimited": true,
+        "rooms": {
+          "max": 200,
+          "stored_bytes": 20000000000,
+          "retention_days": 30,
+          "blob_bytes": 52428800
+        }
+      },
+      "room_quota": {
+        "max": 200,
+        "stored_bytes": 20000000000,
+        "retention_days": 30,
+        "blob_bytes": 52428800
+      }
+    },
+    {
+      "name": "a token with a room quota",
+      "rt1_payload": {
+        "iss": "issuer",
+        "aud": "relay.example",
+        "sub": "i_7f3a9c",
+        "exp": 1800086400,
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000,
+        "rooms": 50,
+        "room_stored_bytes": 5000000000,
+        "room_retention_days": 30,
+        "room_blob_bytes": 52428800
+      },
+      "room_quota": {
+        "max": 50,
+        "stored_bytes": 5000000000,
+        "retention_days": 30,
+        "blob_bytes": 52428800
+      }
+    },
+    {
+      "name": "a token without room fields",
+      "rt1_payload": {
+        "iss": "issuer",
+        "aud": "relay.example",
+        "sub": "i_7f3a9c",
+        "exp": 1800086400,
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000
+      },
+      "room_quota": null
+    },
+    {
+      "name": "rooms 0",
+      "rt1_payload": {
+        "iss": "issuer",
+        "aud": "relay.example",
+        "sub": "i_7f3a9c",
+        "exp": 1800086400,
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000,
+        "rooms": 0,
+        "room_stored_bytes": 5000000000,
+        "room_retention_days": 30,
+        "room_blob_bytes": 52428800
+      },
+      "room_quota": null
+    },
+    {
+      "name": "room_blob_bytes missing",
+      "rt1_payload": {
+        "iss": "issuer",
+        "aud": "relay.example",
+        "sub": "i_7f3a9c",
+        "exp": 1800086400,
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000,
+        "rooms": 50,
+        "room_stored_bytes": 5000000000,
+        "room_retention_days": 30
+      },
+      "room_quota": null
+    },
+    {
+      "name": "rooms as a string",
+      "rt1_payload": {
+        "iss": "issuer",
+        "aud": "relay.example",
+        "sub": "i_7f3a9c",
+        "exp": 1800086400,
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000,
+        "rooms": "50",
+        "room_stored_bytes": 5000000000,
+        "room_retention_days": 30,
+        "room_blob_bytes": 52428800
+      },
+      "room_quota": null
+    },
+    {
+      "name": "room_stored_bytes negative",
+      "rt1_payload": {
+        "iss": "issuer",
+        "aud": "relay.example",
+        "sub": "i_7f3a9c",
+        "exp": 1800086400,
+        "channels": 64,
+        "creates_per_minute": 10,
+        "bytes_per_day": 200000000,
+        "rooms": 50,
+        "room_stored_bytes": -1,
+        "room_retention_days": 30,
+        "room_blob_bytes": 52428800
+      },
+      "room_quota": null
+    }
+  ],
+  "creates": [
+    {
+      "name": "nothing asked",
+      "request": {},
+      "limits": {
+        "max_bytes": 2000000000,
+        "retention_days": 30,
+        "blob_bytes": 52428800
+      }
+    },
+    {
+      "name": "less than the credential",
+      "request": {
+        "max_bytes": 1000000,
+        "retention_days": 7
+      },
+      "limits": {
+        "max_bytes": 1000000,
+        "retention_days": 7,
+        "blob_bytes": 52428800
+      }
+    },
+    {
+      "name": "more than the credential",
+      "request": {
+        "max_bytes": 90000000000,
+        "retention_days": 365
+      },
+      "limits": {
+        "max_bytes": 20000000000,
+        "retention_days": 30,
+        "blob_bytes": 52428800
+      }
+    },
+    {
+      "name": "max_bytes 0",
+      "request": {
+        "max_bytes": 0
+      },
+      "limits": null
+    },
+    {
+      "name": "retention_days as a float",
+      "request": {
+        "retention_days": 7.5
+      },
+      "limits": null
+    },
+    {
+      "name": "nothing asked, under a credential smaller than the defaults",
+      "room_quota": {
+        "max": 200,
+        "stored_bytes": 500000000,
+        "retention_days": 10,
+        "blob_bytes": 52428800
+      },
+      "request": {},
+      "limits": {
+        "max_bytes": 500000000,
+        "retention_days": 10,
+        "blob_bytes": 52428800
+      }
+    }
+  ]
+}
