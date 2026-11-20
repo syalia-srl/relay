@@ -78,6 +78,27 @@ await guest.close()                                # stops connections, keeps pa
   second host needs a second `Guest` with its own state path and key.
 - A pairing a restart interrupts is not kept: the person scans a new payload.
 
+## Rooms
+
+`relay.rooms` is what a party that holds a room credential needs to manage rooms it
+cannot read (`ROOMS.md` 4.2, 4.3): the custodian's signing key, signed roster records,
+the roster's replay, and the owner routes. It makes no epoch and opens no message.
+
+```python
+from relay.rooms import RoomClient, new_signing_key, public_jwk, sign_entry, verify_roster
+
+key = new_signing_key()                     # P-256; public_jwk(key) goes in POST /v1/rooms as custodian.sign_pub
+record = sign_entry(key, entry, n, prev)    # the body of POST /roster
+roster = verify_roster(entries)             # raises RosterInvalid(index, reason) at the first bad record
+client = RoomClient(base_url, token, room=room_id, device=custodian_device, key=key)
+client.roster(); client.append({"kind": "close-invite", "invite": key_id})
+client.invite(uses, expires_at)             # -> invite, invite_key_id, token, invite_key, fragment
+client.remove(device); client.set_owner(device, True); client.info(); client.delete()
+```
+
+`Roster` has `room`, `n`, `head`, `devices`, `invites`, `records`, `readers()` and
+`state()`. `RoomError` carries a relay's `status` and `code`.
+
 ## Errors
 
 One base `RelayError`, with `PairingFailed`, `WrongCode`, `Revoked` and

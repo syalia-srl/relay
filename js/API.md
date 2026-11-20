@@ -77,6 +77,54 @@ A store is any object with `load(): Promise<object | null>` and
 Node (atomic replace, mode 0600) and `webStore(name)` for browsers (`localStorage`).
 A host keeps its static key in its store, so a host runs on Node with `fileStore`.
 
+## Rooms
+
+`import { rooms } from "@syalia/relay"` (or `src/rooms/index.js`) is the room protocol
+of `ROOMS.md` sections 2, 4 and 5 over the relay mailbox of section 3. It never holds a
+device's private keys; it takes an object with this shape:
+
+```js
+const deviceKeys = {
+  signPub,                  // JWK {kty, crv, x, y}, the public half of the ECDSA P-256 key
+  recvPub,                  // JWK, the public half of the ECDH P-256 key
+  async sign(bytes),        // -> Uint8Array(64), r||s over SHA-256
+  async derive(peerJwk),    // -> Uint8Array(32), the raw ECDH secret; HKDF stays in the library
+};
+```
+
+`rooms.softwareDeviceKeys()` makes one in WebCrypto with private keys that cannot be
+exported, for tests and browsers.
+
+```js
+const { room, created } = await rooms.Room.create({ baseUrl, credential, keys, custodianSignPub });
+const { link, invite, inviteKeyId } = await room.invite({ uses: 1, expiresAt, approval: false, appUrl });
+const other = await rooms.Room.join(link, keys);      // { baseUrl } overrides https://<relay host>
+await room.send("text or bytes", { file });           // -> { seq, cid, n, epoch, blob }
+const { messages, dropped, refused, gaps, watermark } = await other.sync();
+await other.fetchFile(messages[0]);                    // the blob a message names, opened
+await room.approve(device); await room.remove([device]); await room.promote(device);
+await room.demote(device); await room.closeInvite({ inviteKeyId, invite }); await room.leave();
+await room.ack(); await room.setPush(token); await room.info(); await room.delete();
+const saved = room.state();                            // counters only, no key: new Room({ ..., state: saved })
+```
+
+- `Room.setUp({ baseUrl, created, keys, custodianSignPub })` does steps 2 and 3 of
+  section 4.7 when someone else called `POST /v1/rooms` (`rooms.createRoom`).
+- `send` reads roster and epochs first, and makes the next epoch when the newest one
+  is not wrapped for exactly the roster's active devices: after a join, an approval or
+  a removal (a custodian's included) that no epoch has followed. On a 409 it reads
+  again and makes one only if the new epoch does not cover the roster. Sends run one
+  after another; a failed connection is retried with the same `cid`.
+- `sync` replays the roster (`room.roster`, `room.rosterError` when a record fails and
+  the roster is broken from there), accepts or refuses epochs (`room.refusedEpochs`),
+  and returns opened messages, replays the counters dropped, messages refused with a
+  reason, and gaps (`missing` or `expired`, section 4.5).
+- The protocol functions are exported too: `verifyRoster`, `signEntry`, `recordHash`,
+  `acceptEpoch`, `makeEpoch`, `openEpoch`, `sealMessage`, `openMessage`, `sealBlob`,
+  `openBlob`, `countMessages`, `parseInviteLink`, `inviteLink`, `canonical`.
+- Errors: `RoomError` (`status`, `code`) for a relay's answer, `Refused` (`reason`)
+  for something a client refuses, `RosterInvalid` (`index`, `reason`) for a roster.
+
 ## Errors
 
 `RelayError`, with `PairingFailed`, `WrongCode`, `Revoked` and `PayloadInvalid`
