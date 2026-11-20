@@ -71,10 +71,11 @@ A key is one of two kinds:
   | `sub` | string, 1 to 128 | An opaque id for the holder. It MUST NOT name the holder. |
   | `exp` | integer | Expiry, Unix seconds. The token is valid while `now < exp`. |
   | `channels`, `creates_per_minute`, `bytes_per_day` | integers | The quota. |
+  | `rooms`, `room_stored_bytes`, `room_retention_days`, `room_blob_bytes` | integers, optional | The room quota (below). |
 
   The relay MUST refuse a token that is longer than 4096 bytes, not of the form
   above, signed by an issuer it does not know or not by that issuer's key, whose
-  payload is not a JSON object with every field above at its type, whose `aud` is
+  payload is not a JSON object with every field above that is not optional at its type, whose `aud` is
   not the relay's own id, or whose `exp` has passed. Unknown fields are ignored.
   The quota is accounted per `(iss, sub)`; when two valid tokens for the same
   holder carry different quotas, the relay applies the one in the token presented
@@ -84,6 +85,20 @@ A key is one of two kinds:
 
 A relay operator MAY give its own channels (a relay run inside one install for its
 local network) a key with no limits.
+
+A key MAY also carry a **room quota**, which lets it create rooms (`ROOMS.md`). For an
+operator key, its entry in the operator's list holds a `rooms` object:
+
+    "rooms": {"max": 200, "stored_bytes": 20000000000, "retention_days": 30, "blob_bytes": 52428800}
+
+For a relay token, the payload holds the same four limits as `rooms`,
+`room_stored_bytes`, `room_retention_days` and `room_blob_bytes`. They are the number of
+rooms the key may hold, the bytes stored across them, the longest retention in days and
+the largest blob in bytes. A key has a room quota only when all four are integers, the
+number of rooms is at least 1 and the retention at least 1; otherwise `POST /v1/rooms`
+and `GET /v1/rooms/quota` answer 403, and the key still works for channels. The room
+fields never make a relay token invalid. A key with no limits for channels has a room
+quota only if it carries one. `ROOMS.md` 3.1 says how the quota is counted.
 
 ### 2.3 HTTP
 
