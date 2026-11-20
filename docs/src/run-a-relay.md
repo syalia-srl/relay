@@ -35,19 +35,22 @@ CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o relay ./cmd/relay
 `ldd relay` answers `not a dynamic executable`. The binary runs on a host without a
 Go toolchain.
 
-A local run needs no installation. The three settings below are the whole
+A local run needs no installation. The four settings below are the whole
 configuration; the paths are the ones the unit uses:
 
 ```bash
 RELAY_ADDR=127.0.0.1:8010 \
 RELAY_STATE_PATH=/var/lib/relay/channels.json \
+RELAY_ROOMS_PATH=/var/lib/relay/rooms.db \
 RELAY_KEYS_PATH=/etc/relay/keys.json \
 ./relay
 ```
 
 `RELAY_ADDR` defaults to `127.0.0.1:8010`. `RELAY_STATE_PATH` defaults to
-`/data/channels.json`, which suits the container. `RELAY_KEYS_PATH` has no default:
-without it the relay refuses every v1 key.
+`/data/channels.json` and `RELAY_ROOMS_PATH`, the SQLite database of rooms, to
+`/data/rooms.db`, which suit the container. A rooms database the relay cannot open
+turns rooms off (every `/v1/rooms` route answers 503) and leaves channels working.
+`RELAY_KEYS_PATH` has no default: without it the relay refuses every v1 key.
 
 The rest of this page uses `/srv/relay/relay` for the binary and a throwaway
 directory for the first checks.
@@ -140,6 +143,7 @@ Environment=RELAY_ADDR=127.0.0.1:8010
 StateDirectory=relay
 StateDirectoryMode=0700
 Environment=RELAY_STATE_PATH=/var/lib/relay/channels.json
+Environment=RELAY_ROOMS_PATH=/var/lib/relay/rooms.db
 Environment=RELAY_KEYS_PATH=/etc/relay/keys.json
 Restart=on-failure
 RestartSec=5
@@ -260,6 +264,7 @@ umask 077
 mkdir -p state
 RELAY_ADDR=127.0.0.1:8010 \
 RELAY_STATE_PATH="$PWD/state/channels.json" \
+RELAY_ROOMS_PATH="$PWD/state/rooms.db" \
 RELAY_KEYS_PATH="$PWD/keys.json" \
 ./relay &
 ```

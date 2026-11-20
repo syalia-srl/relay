@@ -7,16 +7,25 @@ it cannot read. AInBox is its first user.
 
 The service behind the relay URL (port 8010 on its host). Creates channels (two-slot
 WebSocket pipes), forwards encrypted binary frames between slots, emits presence
-system events on connect/disconnect.
+system events on connect/disconnect. Also keeps the rooms mailbox of `ROOMS.md`
+section 3 under `/v1/rooms`: rooms, devices, invites, roster records, epochs,
+ciphertext messages and blobs, and a notification socket.
 
 ## Stack
 
 Go 1.27, one static binary (`CGO_ENABLED=0`), the standard library plus
-`github.com/coder/websocket`. No database: the channel store is one JSON file
-(`RELAY_STATE_PATH`, default `/data/channels.json`) holding channel ids and the
-SHA-256 of each slot token, never a token. A path the service cannot write makes it
-log "channel store not writable", keep channels in memory only, and lose every
-pairing on the next restart.
+`github.com/coder/websocket` and the pure-Go SQLite driver `modernc.org/sqlite`.
+The channel store is one JSON file (`RELAY_STATE_PATH`, default
+`/data/channels.json`) holding channel ids and the SHA-256 of each slot token, never a
+token. A path the service cannot write makes it log "channel store not writable", keep
+channels in memory only, and lose every pairing on the next restart.
+
+Rooms live in one SQLite database (`RELAY_ROOMS_PATH`, default `/data/rooms.db`,
+created 0600, WAL mode) in `server/internal/rooms`. Tokens are kept as SHA-256
+digests; blobs are stored in the database. One connection serialises every
+transaction, which is what makes a room's sequences unique. A database the service
+cannot open makes it log "rooms store not writable; rooms are off": every `/v1/rooms`
+route answers 503 and channels keep working.
 
 ## Rules
 
@@ -38,10 +47,12 @@ pairing on the next restart.
 ## Run
 
     cd server && CGO_ENABLED=0 go build -o relay ./cmd/relay
-    RELAY_ADDR=127.0.0.1:8010 RELAY_STATE_PATH=/tmp/channels.json ./relay
+    RELAY_ADDR=127.0.0.1:8010 RELAY_STATE_PATH=/tmp/channels.json RELAY_ROOMS_PATH=/tmp/rooms.db ./relay
 
-`RELAY_ADDR` defaults to `127.0.0.1:8010`. `SIGHUP` re-reads the keys file; `SIGTERM`
-closes the sockets with 1001 and saves the store.
+`RELAY_ADDR` defaults to `127.0.0.1:8010`. `SIGHUP` re-reads the keys file and sweeps
+rooms, so an operator key that left makes its rooms read-only at once; `SIGTERM`
+closes the sockets with 1001 and saves the store. Rooms are swept every 5 minutes:
+retention, rooms never set up within an hour, rooms read-only for 30 days.
 
 ## Config
 
@@ -55,7 +66,15 @@ closes the sockets with 1001 and saves the store.
 
 A limit of 0 allows nothing, for keys and relay tokens alike; only `"unlimited": true`
 lifts the limits, for an install's own relay. A missing file refuses every v1 key,
-which is the safe default.
+which is the safe default. A key creates rooms only with a `rooms` object
+(`{"max", "stored_bytes", "retention_days", "blob_bytes"}`, `PROTOCOL.md` 2.2), and a
+relay token only with the `rooms`, `room_stored_bytes`, `room_retention_days` and
+`room_blob_bytes` fields.
+
+`RELAY_TEST_CLOCK` is test-only and off unless set: it names a file holding a number
+of seconds added to the rooms clock, and makes the relay sweep rooms before every
+room request, so the conformance suite tests the 1-hour, 1-day, 14-day and 30-day
+rules without waiting. A production relay never sets it.
 
 ## Test
 
@@ -63,9 +82,10 @@ which is the safe default.
     uv run --group conformance pytest conformance
 
 The conformance suite is black-box: it starts the binary named by `RELAY_BIN` on a
-free port with a temporary state directory and keys file. It covers the v0 behaviour
-and every v1 rule, and a Go unit test replays every case of
-`vectors/relay_token.json`.
+free port with a temporary state directory, rooms database, test clock and keys file.
+It covers the v0 behaviour, every v1 rule and the rooms mailbox
+(`conformance/test_rooms_*.py`). Go unit tests replay every case of
+`vectors/relay_token.json` and `vectors/rooms_quota.json`.
 
 ## Deploy
 
@@ -78,7 +98,7 @@ in `/var/lib/relay` (systemd's `StateDirectory`) and its keys in `/etc/relay/key
     sudo install -m 0755 /tmp/relay /srv/relay/relay
     sudo systemctl daemon-reload && sudo systemctl restart relay
 
-Check that a restart keeps channels: `channels.json` exists in the state directory
+Check that a restart keeps channels and rooms: `channels.json` and `rooms.db` exist in the state directory
 at 0600 and survives a second restart. `server/Dockerfile` is the same service for a
 container host, with `/data` as the volume.
 

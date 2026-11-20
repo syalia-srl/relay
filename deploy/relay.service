@@ -13,6 +13,7 @@ Environment=RELAY_ADDR=127.0.0.1:8010
 StateDirectory=relay
 StateDirectoryMode=0700
 Environment=RELAY_STATE_PATH=/var/lib/relay/channels.json
+Environment=RELAY_ROOMS_PATH=/var/lib/relay/rooms.db
 Environment=RELAY_KEYS_PATH=/etc/relay/keys.json
 Restart=on-failure
 RestartSec=5
